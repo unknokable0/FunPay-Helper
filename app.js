@@ -1,158 +1,136 @@
 (() => {
-  "use strict";
-  const requestedTheme = new URLSearchParams(location.search).get("theme");
-  document.documentElement.dataset.theme = requestedTheme === "light" ? "light" : "dark";
-  const main = document.getElementById("main"), notice = document.getElementById("notice");
+  'use strict';
+  document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') === 'light' ? 'light' : 'dark';
+  const main = document.getElementById('main'), toast = document.getElementById('toast');
   const version = chrome.runtime.getManifest().version;
-  const repo = "https://github.com/unknokable0/FunPay-Helper";
-  let state = { templates: FPH_DEFAULT_TEMPLATES, settings: { ...FPH_DEFAULT_SETTINGS }, update: null };
-  let view = "home", editing = false, busy = false, noticeTimer;
-  document.getElementById("app-version").textContent = "v" + version;
-  function node(tag, attrs = {}, ...children) {
-    const el = document.createElement(tag);
-    for (const [key, value] of Object.entries(attrs)) {
-      if (key === "class") el.className = value;
-      else if (key.startsWith("on")) el.addEventListener(key.slice(2).toLowerCase(), value);
-      else if (key === "value") el.value = value;
-      else if (key === "disabled") el.disabled = value;
-      else if (value != null) el.setAttribute(key, value);
+  const repo = 'https://github.com/unknokable0/FunPay-Helper';
+  document.getElementById('version').textContent = 'v' + version;
+  let state = {templates:FPH_DEFAULT_TEMPLATES, settings:{...FPH_DEFAULT_SETTINGS}, update:null};
+  let view = 'home', editing = false, busy = false, search = '', toastTimer;
+  const el = (tag, attrs = {}, ...children) => {
+    const node = document.createElement(tag);
+    for (const [k,v] of Object.entries(attrs)) {
+      if (k === 'class') node.className = v;
+      else if (k === 'value') node.value = v;
+      else if (k === 'disabled') node.disabled = v;
+      else if (k.startsWith('on')) node.addEventListener(k.slice(2).toLowerCase(), v);
+      else if (v != null) node.setAttribute(k,v);
     }
-    for (const child of children.flat()) if (child != null) el.append(child);
-    return el;
+    for (const child of children.flat()) if (child != null) node.append(child);
+    return node;
+  };
+  function icon(name, cls='') {
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('aria-hidden','true'); if(cls) svg.setAttribute('class',cls);
+    const use=document.createElementNS('http://www.w3.org/2000/svg','use'); use.setAttribute('href','#i-'+name); svg.append(use); return svg;
   }
-  function tell(text) { notice.textContent = text; notice.classList.add("show"); clearTimeout(noticeTimer); noticeTimer = setTimeout(() => notice.classList.remove("show"), 3500); }
-  async function load() {
-    const d = await chrome.storage.local.get(["templates", "settings", "update"]);
-    state = { templates: Array.isArray(d.templates) ? d.templates : FPH_DEFAULT_TEMPLATES, settings: { ...FPH_DEFAULT_SETTINGS, ...(d.settings || {}) }, update: d.update || null };
-  }
+  function button(text, action, cls='', iconName='') {return el('button',{type:'button',class:'btn '+cls,onClick:action},iconName?icon(iconName):null,text);}
+  function notify(text) {toast.textContent=text; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toast.classList.remove('show'),3500);}
+  async function load() {const data=await chrome.storage.local.get(['templates','settings','update']); state={templates:Array.isArray(data.templates)?data.templates:FPH_DEFAULT_TEMPLATES,settings:{...FPH_DEFAULT_SETTINGS,...(data.settings||{})},update:data.update||null};}
   function go(next) {
-    if (editing && !confirm("Есть несохранённые изменения. Покинуть редактор?")) return;
-    editing = false; view = next; render(); main.focus();
+    if (editing && !confirm('В редакторе могут быть несохранённые изменения. Выйти?')) return;
+    editing=false; view=next; search=''; render(); main.focus();
   }
-  function button(text, handler, cls = "") { return node("button", { type: "button", class: "button " + cls, onClick: handler }, text); }
-  function heading(section, title, subtitle) { return node("header", { class:"page-head" }, node("div", {class:"eyebrow"}, section), node("h1", {}, title), node("p", {class:"subtle"}, subtitle)); }
+  function heading(label,title,description) {return el('header',{class:'section-header'},el('div',{class:'eyebrow'},label),el('h1',{},title),el('p',{},description));}
+  function shortcut(symbol,title,desc,target) {return el('button',{type:'button',class:'shortcut',onClick:()=>go(target)},el('span',{class:'shortcut-icon'},icon(symbol)),el('span',{},el('strong',{},title),el('small',{},desc)),icon('arrow','arrow'));}
   function home() {
-    const on = !!state.settings.templatesEnabled;
-    const count = state.templates.length;
-    return [heading("ПАНЕЛЬ ПРОДАВЦА", "Обзор", "Быстрый доступ к настройкам и готовым ответам для ваших чатов."),
-      node("section", { class:"panel home-intro" },
-        node("div", {class:"home-intro-copy"}, node("div", {class:"panel-kicker"}, "БЫСТРЫЕ ОТВЕТЫ"), node("h2", {}, "Меньше рутины в переписках"), node("p", {class:"subtle"}, "Сохраняйте сообщения и вставляйте их в чат одним нажатием. Отправлять текст будете вы сами."), button("Открыть шаблоны", () => go("templates"), "primary")),
-        node("div", {class:"home-summary", "aria-label":"Статус шаблонов"}, node("div", {class:"summary-label"}, "ШАБЛОНЫ"), node("div", {class:"summary-number"}, String(count)), node("div", {class:"summary-caption"}, "сохранено"), node("div", {class:"summary-divider"}), node("div", {class:"status-line"}, node("span", {class:"status-dot", style:on ? "" : "background:#99939f"}), on ? "Кнопки включены" : "Кнопки выключены"))),
-      node("section", {class:"section"}, node("div", {class:"section-head"}, node("h2", {}, "Быстрый доступ")),
-        node("div", {class:"panel quick-list"},
-          node("div", {class:"quick-row"}, node("div", {class:"quick-icon", "aria-hidden":"true"}, document.querySelector('[data-view="templates"] svg').cloneNode(true)), node("div", {class:"quick-copy"}, node("strong", {}, "Шаблоны сообщений"), node("p", {class:"subtle"}, "Создание и редактирование ответов")), button("Перейти", () => go("templates"))),
-          node("div", {class:"quick-row"}, node("div", {class:"quick-icon", "aria-hidden":"true"}, document.querySelector('[data-view="settings"] svg').cloneNode(true)), node("div", {class:"quick-copy"}, node("strong", {}, "Настройки"), node("p", {class:"subtle"}, "Кнопки в чате и проверка обновлений")), button("Открыть", () => go("settings"))))),
-      node("p", {class:"privacy-note"}, "Данные шаблонов хранятся локально в этом браузере.")];
+    const enabled=!!state.settings.templatesEnabled;
+    return [heading('ВАШЕ РАБОЧЕЕ ПРОСТРАНСТВО','Всё под рукой','Быстрые ответы и настройки — прямо на FunPay.'),
+      el('section',{class:'surface hero'},el('div',{},el('div',{class:'hero-tag'},icon('chat'),'ШАБЛОНЫ СООБЩЕНИЙ'),el('h2',{},'Меньше рутины. Больше общения.'),el('p',{},'Сохраняйте готовые ответы и вставляйте их в чат одним нажатием. Отправка всегда остаётся за вами.'),button('Открыть шаблоны',()=>go('templates'),'primary','arrow')),
+        el('div',{class:'hero-stat'},el('div',{class:'stat-title'},'Ваши шаблоны'),el('div',{class:'stat-number'},String(state.templates.length)),el('div',{class:'stat-desc'},'сохранено'),el('div',{class:'status'+(enabled?'':' off')},el('span',{class:'dot'}),enabled?'Кнопки включены':'Кнопки выключены'))),
+      el('section',{class:'section'},el('div',{class:'section-title'},el('h2',{},'Быстрый доступ'),el('span',{class:'caption'},'Всё самое нужное')),el('div',{class:'shortcuts'},shortcut('chat','Шаблоны','Создать или изменить ответ','templates'),shortcut('settings','Настройки','Кнопки в чате и обновления','settings'))),
+      el('div',{class:'footnote'},icon('shield'),'Ваши шаблоны хранятся локально в этом браузере.')];
   }
-  function templatesView() {
-    const list = node("div", {class:"panel template-list"});
-    if (!state.templates.length) list.append(node("div", {class:"empty"}, "Пока нет шаблонов. Создайте первый ответ."));
-    state.templates.forEach((t, index) => {
-      const info = node("div", {class:"template-info"}, node("div", {class:"template-name"}, String(t.name || "")), t.category ? node("div", {class:"template-category"}, String(t.category)) : null, node("div", {class:"template-text"}, String(t.text || "")));
-      list.append(node("div", {class:"template-row"}, info, node("div", {class:"actions"}, button("Изменить", () => editTemplate(index)), button("Удалить", () => removeTemplate(index), "danger"))));
-    });
-    return [heading("Сообщения", "Шаблоны", "Готовые ответы для переписок с покупателями."), node("div", {class:"section-head"}, node("h2", {}, "Ваши шаблоны · " + state.templates.length), node("div", {class:"actions"}, button("Восстановить стандартные", restoreDefaults), button("+ Создать", () => editTemplate(null), "primary"))), list, node("p", {class:"hint"}, "Шаблоны вставляют текст в сообщение, но не отправляют его автоматически.")];
+  function templateList() {
+    const list=el('div',{class:'surface list'});
+    const needle=search.trim().toLocaleLowerCase('ru');
+    const entries=state.templates.map((item,index)=>({item,index})).filter(({item})=>[item?.name,item?.text,item?.category].some(x=>String(x||'').toLocaleLowerCase('ru').includes(needle)));
+    if (!entries.length) list.append(el('div',{class:'empty'},state.templates.length?'Ничего не найдено. Попробуйте другой запрос.':'Здесь пока пусто. Создайте свой первый шаблон.'));
+    for (const {item:t,index} of entries) {
+      list.append(el('article',{class:'template'},el('div',{class:'template-body'},el('div',{class:'template-name'},String(t?.name||'')),t?.category?el('div',{class:'template-category'},String(t.category)):null,el('div',{class:'template-text'},String(t?.text||''))),el('div',{class:'actions'},button('Изменить',()=>edit(index)),button('Удалить',()=>remove(index),'danger'))));
+    }
+    return list;
   }
-  async function restoreDefaults() {
-    if (!confirm("Заменить все текущие шаблоны стандартными? Это действие нельзя отменить.")) return;
+  function templates() {
+    const query=el('input',{type:'search',class:'control',placeholder:'Поиск шаблонов',value:search,'aria-label':'Поиск шаблонов'});
+    const holder=el('div',{},templateList());
+    query.addEventListener('input',()=>{search=query.value; holder.replaceChildren(templateList());});
+    return [heading('СООБЩЕНИЯ','Шаблоны','Готовые ответы для общения с покупателями.'),el('div',{class:'toolbar'},el('h2',{},'Ваши шаблоны · '+state.templates.length),el('div',{class:'toolbar-actions'},el('div',{class:'search'},icon('search'),query),button('Восстановить стандартные',restore),button('Создать',()=>edit(null),'primary','plus'))),holder,el('div',{class:'hint'},'Текст вставляется в чат без автоматической отправки.')];
+  }
+  async function restore() {
+    if (!confirm('Заменить все текущие шаблоны стандартными? Это действие нельзя отменить.')) return;
     try {
-      const d = await chrome.storage.local.get("templates");
-      const current = Array.isArray(d.templates) ? d.templates : FPH_DEFAULT_TEMPLATES;
-      if (JSON.stringify(current) !== JSON.stringify(state.templates)) { await load(); render(); tell("Шаблоны изменились в другом окне. Повторите действие."); return; }
-      await chrome.storage.local.set({ templates: FPH_DEFAULT_TEMPLATES });
-      await load(); render(); tell("Стандартные шаблоны восстановлены");
-    } catch (_) { tell("Не удалось восстановить шаблоны."); }
+      const data=await chrome.storage.local.get('templates'), current=Array.isArray(data.templates)?data.templates:FPH_DEFAULT_TEMPLATES;
+      if (JSON.stringify(current)!==JSON.stringify(state.templates)) {await load(); render(); notify('Список изменился. Повторите действие.'); return;}
+      await chrome.storage.local.set({templates:FPH_DEFAULT_TEMPLATES}); await load(); render(); notify('Стандартные шаблоны восстановлены');
+    } catch (_) {notify('Не удалось восстановить шаблоны.');}
   }
-  async function removeTemplate(index) {
-    const current = state.templates[index];
-    if (!confirm(`Удалить шаблон «${current.name}»?`)) return;
+  async function remove(index) {
+    const target=state.templates[index];
+    if (!confirm('Удалить шаблон «'+(target?.name||'')+'»?')) return;
     try {
-      const d = await chrome.storage.local.get("templates");
-      const saved = Array.isArray(d.templates) ? d.templates : FPH_DEFAULT_TEMPLATES;
-      if (JSON.stringify(saved) !== JSON.stringify(state.templates)) { await load(); render(); tell("Шаблоны изменились в другом окне. Повторите действие."); return; }
-      await chrome.storage.local.set({ templates: saved.filter((_, i) => i !== index) });
-      await load(); render(); tell("Шаблон удалён");
-    } catch (_) { tell("Не удалось удалить шаблон. Попробуйте снова."); }
+      const data=await chrome.storage.local.get('templates'), current=Array.isArray(data.templates)?data.templates:FPH_DEFAULT_TEMPLATES;
+      if (JSON.stringify(current)!==JSON.stringify(state.templates)) {await load(); render(); notify('Список изменился. Повторите действие.'); return;}
+      await chrome.storage.local.set({templates:current.filter((_,i)=>i!==index)}); await load(); render(); notify('Шаблон удалён');
+    } catch (_) {notify('Не удалось удалить шаблон.');}
   }
-  function editTemplate(index) {
-    editing = true;
-    const original = index === null ? {} : state.templates[index];
-    const baseline = JSON.stringify(state.templates);
-    const name = node("input", { type:"text", maxlength:"80", required:"", value: original.name || "", id:"template-name" });
-    const category = node("input", { type:"text", maxlength:"80", value: original.category || "", id:"template-category" });
-    const text = node("textarea", { required:"", id:"template-text" }); text.value = original.text || "";
-    const error = node("div", {class:"error", role:"alert"});
-    const save = button("Сохранить", async () => {
-      const n = name.value.trim(), t = text.value.trim(), c = category.value.trim();
-      if (!n || !t) { error.textContent = "Укажите название и текст шаблона."; return; }
-      save.disabled = true;
+  function edit(index) {
+    editing=true;
+    const original=index===null?{}:(state.templates[index]||{}), baseline=JSON.stringify(state.templates);
+    const name=el('input',{class:'control',id:'template-name',maxlength:'80',value:original.name||'',autocomplete:'off'});
+    const category=el('input',{class:'control',id:'template-category',maxlength:'80',value:original.category||'',autocomplete:'off'});
+    const text=el('textarea',{class:'control',id:'template-text'}); text.value=original.text||'';
+    const error=el('div',{class:'error',role:'alert'});
+    const save=button('Сохранить',async()=>{
+      const n=name.value.trim(), t=text.value.trim(), c=category.value.trim();
+      if (!n||!t) {error.textContent='Укажите название и текст сообщения.'; return;}
+      save.disabled=true;
       try {
-        const d = await chrome.storage.local.get("templates");
-        const stored = Array.isArray(d.templates) ? d.templates : FPH_DEFAULT_TEMPLATES;
-        if (JSON.stringify(stored) !== baseline) { error.textContent = "Шаблоны изменились в другом окне. Скопируйте свой текст и откройте редактор заново."; return; }
-        const next = stored.slice();
-        const updated = { ...original, name:n, text:t }; if (c) updated.category = c; else delete updated.category;
-        if (index === null) next.push(updated); else next[index] = updated;
-        await chrome.storage.local.set({templates:next}); editing = false; await load(); render(); tell("Шаблон сохранён");
-      } catch (_) { error.textContent = "Не удалось сохранить шаблон. Попробуйте снова."; }
-      finally { save.disabled = false; }
-    }, "primary");
-    const cancel = button("Отмена", () => go("templates"));
-    main.replaceChildren(heading("Сообщения", index === null ? "Новый шаблон" : "Редактирование", "Название станет подписью кнопки в чате."),
-      node("div", {class:"panel"}, node("label", {class:"field", for:"template-name"}, "Название", name), node("label", {class:"field", for:"template-category"}, "Категория (необязательно)", category), node("label", {class:"field", for:"template-text"}, "Текст сообщения", text), node("p", {class:"hint"}, "Текст вставляется в чат без автоматической отправки."), error, node("div", {class:"actions form-actions"}, save, cancel)));
+        const data=await chrome.storage.local.get('templates'), current=Array.isArray(data.templates)?data.templates:FPH_DEFAULT_TEMPLATES;
+        if(JSON.stringify(current)!==baseline) {error.textContent='Шаблоны изменились в другом окне. Скопируйте текст и откройте редактор заново.'; return;}
+        const item={...original,name:n,text:t}; if(c) item.category=c; else delete item.category;
+        const next=current.slice(); if(index===null) next.push(item); else next[index]=item;
+        await chrome.storage.local.set({templates:next}); editing=false; await load(); render(); notify('Шаблон сохранён');
+      } catch (_) {error.textContent='Не удалось сохранить шаблон. Попробуйте снова.';}
+      finally {save.disabled=false;}
+    },'primary');
+    main.replaceChildren(heading('СООБЩЕНИЯ',index===null?'Новый шаблон':'Редактирование','Название будет видно на кнопке в чате.'),
+      el('div',{class:'surface form'},el('label',{class:'field',for:'template-name'},'Название',name),el('label',{class:'field',for:'template-category'},'Категория · необязательно',category),el('label',{class:'field',for:'template-text'},'Текст сообщения',text),el('p',{class:'form-help'},'Сообщение не будет отправлено автоматически.'),error,el('div',{class:'form-actions'},save,button('Отмена',()=>go('templates')))));
     name.focus();
   }
-  async function setEnabled() {
-    try {
-      const d = await chrome.storage.local.get("settings");
-      const settings = { ...FPH_DEFAULT_SETTINGS, ...(d.settings || {}) };
-      await chrome.storage.local.set({settings:{...settings, templatesEnabled:!settings.templatesEnabled}});
-      await load(); render();
-    } catch (_) { tell("Не удалось сохранить настройку."); }
+  async function toggle() {
+    try {const data=await chrome.storage.local.get('settings'); const current={...FPH_DEFAULT_SETTINGS,...(data.settings||{})}; await chrome.storage.local.set({settings:{...current,templatesEnabled:!current.templatesEnabled}}); await load(); render();}
+    catch (_) {notify('Не удалось сохранить настройку.');}
   }
-  function switchRow() {
-    const on = !!state.settings.templatesEnabled;
-    return node("div", {class:"panel setting-row"}, node("div", {}, node("strong", {}, "Кнопки шаблонов в чате"), node("p", {class:"subtle"}, "Показывать быстрые ответы над полем сообщения.")), node("button", {type:"button", class:"switch", role:"switch", "aria-label":"Кнопки шаблонов в чате", "aria-checked":String(on), onClick:setEnabled}));
+  async function check() {
+    busy=true; render();
+    try {const result=await chrome.runtime.sendMessage({type:'check-update'}); if(!result) throw Error('no response'); await load();} catch (_) {notify('Не удалось проверить обновления.');}
+    finally {busy=false; if(view==='settings'&&!editing) render();}
   }
-  function updateSection() {
-    const u = state.update, newer = u && u.latest && fphCmpVersion(u.latest, version) > 0;
-    let title = "Обновления ещё не проверялись", description = "Автоматическая проверка каждые 6 часов.";
-    if (newer) { title = "Доступна версия " + u.latest; description = u.error ? "Последняя проверка не удалась; показана ранее найденная версия." : "Загрузите обновление с GitHub и перезагрузите расширение."; }
-    else if (u && u.error) { title = "Не удалось проверить обновления"; description = "Проверьте соединение и попробуйте снова."; }
-    else if (u && u.latest) { title = "Обновлений не найдено"; description = "Проверено: " + new Date(u.checkedAt).toLocaleString("ru-RU"); }
-    const action = newer ? node("a", {class:"button primary", href:repo + "/archive/refs/heads/main.zip", target:"_blank", rel:"noopener noreferrer"}, "Скачать") : button(busy ? "Проверяю…" : "Проверить", checkNow);
-    if (busy && !newer) action.disabled = true;
-    return node("div", {class:"panel update-row"}, node("div", {}, node("strong", {}, title), node("p", {class:"muted-note"}, description)), action);
+  function settings() {
+    const on=!!state.settings.templatesEnabled, update=state.update, newer=update?.latest && fphCmpVersion(update.latest,version)>0;
+    let title='Проверка обновлений', detail='Автоматически каждые 6 часов или вручную.';
+    if (newer) {title='Доступна версия '+update.latest; detail=update.error?'Последняя проверка не удалась; показан предыдущий результат.':'Скачайте обновление на GitHub.';}
+    else if(update?.error) {title='Не удалось проверить обновления'; detail='Проверьте соединение и попробуйте снова.';}
+    else if(update?.latest) {title='Обновлений не найдено'; detail='Проверено: '+new Date(update.checkedAt).toLocaleString('ru-RU');}
+    const checkButton=newer?el('a',{class:'btn primary',href:repo+'/archive/refs/heads/main.zip',target:'_blank',rel:'noopener noreferrer'},'Скачать'):button(busy?'Проверяем…':'Проверить',check);
+    if(busy&&!newer) checkButton.disabled=true;
+    return [heading('ПРИЛОЖЕНИЕ','Настройки','Управление функциями и обновлениями.'),
+      el('section',{class:'setting-section'},el('h2',{},'Шаблоны'),el('div',{class:'surface setting'},el('div',{},el('strong',{},'Быстрые ответы в чате'),el('p',{},'Показывать кнопки шаблонов над полем сообщения.')),el('button',{type:'button',class:'switch',role:'switch','aria-label':'Быстрые ответы в чате','aria-checked':String(on),onClick:toggle}))),
+      el('section',{class:'setting-section'},el('h2',{},'Обновления'),el('div',{class:'surface setting update'},el('div',{},el('strong',{},title),el('p',{},detail)),checkButton)),
+      el('section',{class:'setting-section'},el('h2',{},'О расширении'),el('div',{class:'surface setting'},el('div',{},el('strong',{},'FunPay Helper · v'+version),el('p',{},'Шаблоны и настройки хранятся локально.')),el('a',{class:'btn',href:repo,target:'_blank',rel:'noopener noreferrer'},'GitHub ↗')))];
   }
-  async function checkNow() {
-    busy = true; render();
-    try { const result = await chrome.runtime.sendMessage({type:"check-update"}); if (!result) throw Error("Нет ответа"); await load(); }
-    catch (_) { tell("Не удалось проверить обновления."); }
-    finally { busy = false; if (view === "settings" && !editing) render(); }
-  }
-  function settingsView() {
-    return [heading("Приложение", "Настройки", "Управляйте функциями расширения и обновлениями."), node("section", {}, node("div", {class:"section-head"}, node("h2", {}, "Шаблоны")), switchRow()), node("section", {class:"section"}, node("div", {class:"section-head"}, node("h2", {}, "Обновления")), updateSection()), node("section", {class:"section"}, node("h2", {}, "О приложении"), node("p", {class:"subtle"}, "Версия " + version + " · ", node("a", {href:repo, target:"_blank", rel:"noopener noreferrer", class:"link"}, "GitHub")))];
-  }
-  function placeholder(title, description) {
-    return [heading("В разработке", title, "Этот раздел пока недоступен."), node("div", {class:"panel not-available"}, node("div", {class:"empty-icon", "aria-hidden":"true"}, "◌"), node("h2", {}, "Здесь пока ничего нет"), node("p", {class:"subtle"}, description), node("p", {class:"subtle"}, "Функции появятся после реализации и проверки."))];
+  function planned(title, description) {
+    return [heading('В РАЗРАБОТКЕ',title,'Этот раздел пока недоступен.'),el('div',{class:'surface planned'},el('span',{class:'planned-icon'},icon('clock')),el('h2',{},'Скоро здесь появится больше'),el('p',{},description))];
   }
   function render() {
-    document.querySelectorAll("[data-view]").forEach(el => { const active = el.dataset.view === view; el.classList.toggle("active", active); if (active) el.setAttribute("aria-current", "page"); else el.removeAttribute("aria-current"); });
-    let content;
-    switch(view) {
-      case "templates": content = templatesView(); break;
-      case "settings": content = settingsView(); break;
-      case "lots": content = placeholder("Лоты", "Управление и создание лотов ещё не реализованы."); break;
-      case "actions": content = placeholder("Быстрые действия", "Дополнительные инструменты для заказов и чатов ещё не реализованы."); break;
-      case "stats": content = placeholder("Статистика", "Подключённых проверенных данных о продажах пока нет."); break;
-      default: content = home();
-    }
-    main.replaceChildren(...content);
+    document.querySelectorAll('[data-view]').forEach(item=>{const active=item.dataset.view===view;item.classList.toggle('active',active); if(active)item.setAttribute('aria-current','page');else item.removeAttribute('aria-current');});
+    main.replaceChildren(...(view==='templates'?templates():view==='settings'?settings():view==='lots'?planned('Лоты','Управление лотами ещё не реализовано.'):view==='actions'?planned('Быстрые действия','Дополнительные инструменты для заказов и чатов ещё не реализованы.'):view==='stats'?planned('Статистика','Проверенных данных о продажах пока нет.'):home()));
   }
-  document.querySelectorAll("[data-view]").forEach(el => el.addEventListener("click", () => go(el.dataset.view)));
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local" || !["templates", "settings", "update"].some(k => changes[k])) return;
-    if (!editing) load().then(() => { if (!editing) render(); }).catch(() => tell("Не удалось прочитать настройки."));
-  });
-  load().then(render).catch(() => { render(); tell("Не удалось прочитать сохранённые данные."); });
+  document.querySelectorAll('[data-view]').forEach(item=>item.addEventListener('click',()=>go(item.dataset.view)));
+  chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local' && ['templates','settings','update'].some(k=>changes[k]) && !editing) load().then(()=>{if(!editing)render();}).catch(()=>notify('Не удалось прочитать данные.'));});
+  load().then(render).catch(()=>{render();notify('Не удалось прочитать данные.');});
+  let sizeTimer;
+  function reportSize(){clearTimeout(sizeTimer);sizeTimer=setTimeout(()=>{const h=Math.ceil(document.querySelector('.app-shell').getBoundingClientRect().height);parent.postMessage({type:'fph-size',height:h},'https://funpay.com');},40);}
+  new ResizeObserver(reportSize).observe(document.querySelector('.app-shell')); reportSize();
 })();
