@@ -44,7 +44,9 @@
   background: rgba(128, 128, 128, 0.14);
   color: inherit;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
