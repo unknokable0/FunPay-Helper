@@ -7,6 +7,9 @@ let fphMenu = null;
 let fphInput = null;
 let fphForm = null;
 let fphInputColumn = null;
+let fphSizeObserver = null;
+
+function stopFormWatch() { fphSizeObserver?.disconnect(); fphSizeObserver = null; }
 
 function clearInputColumn() {
   fphInputColumn?.classList.remove('fph-input-column');
@@ -124,12 +127,12 @@ function renderBar() {
   if (!fphState) return;
   const old = document.getElementById(BAR_ID);
   if (!fphState.settings.templatesEnabled || !fphState.templates.length) {
-    closeMenu(); if (old) old.remove(); fphTrigger = null; fphInput = null; fphForm = null; clearInputColumn(); return;
+    closeMenu(); if (old) old.remove(); fphTrigger = null; fphInput = null; fphForm = null; clearInputColumn(); stopFormWatch(); return;
   }
   const input = findInput();
-  if (!input) { closeMenu(); if (old) old.remove(); fphTrigger = null; fphInput = null; fphForm = null; clearInputColumn(); return; }
+  if (!input) { closeMenu(); if (old) old.remove(); fphTrigger = null; fphInput = null; fphForm = null; clearInputColumn(); stopFormWatch(); return; }
   const form = input.closest('form');
-  if (!form || !form.contains(input)) { closeMenu(); old?.remove(); fphTrigger = null; fphInput = null; fphForm = null; clearInputColumn(); return; }
+  if (!form || !form.contains(input)) { closeMenu(); old?.remove(); fphTrigger = null; fphInput = null; fphForm = null; clearInputColumn(); stopFormWatch(); return; }
   let inputColumn = input;
   while (inputColumn.parentElement && inputColumn.parentElement !== form) inputColumn = inputColumn.parentElement;
   if (inputColumn.parentElement !== form) return;
@@ -155,7 +158,16 @@ function renderBar() {
     openMenu();
     if (event.detail === 0 && fphMenu) fphMenu.querySelector('.fph-menu-item')?.focus({ preventScroll: true });
   });
-  bar.appendChild(trigger); fphTrigger = trigger; fphInput = input; fphForm = form;
+  bar.appendChild(trigger); fphTrigger = trigger; fphInput = input;
+  if (fphForm !== form || !fphSizeObserver) {
+    stopFormWatch();
+    fphSizeObserver = new ResizeObserver(() => {
+      bar.classList.toggle('fph-compact', form.clientWidth < 430);
+      if (fphMenu) positionMenu();
+    });
+    fphSizeObserver.observe(form);
+  }
+  fphForm = form;
 }
 
 // FunPay меняет содержимое чата без перезагрузки страницы.
@@ -165,7 +177,7 @@ new MutationObserver(() => {
   fphTimer = setTimeout(() => {
     if (!fphState || !fphState.settings.templatesEnabled || !fphState.templates.length) return;
     const input = findInput();
-    if (!input) { closeMenu(); document.getElementById(BAR_ID)?.remove(); fphTrigger = null; fphInput = null; fphForm = null; clearInputColumn(); return; }
+    if (!input) { closeMenu(); document.getElementById(BAR_ID)?.remove(); fphTrigger = null; fphInput = null; fphForm = null; clearInputColumn(); stopFormWatch(); return; }
     const form = input.closest('form');
     const bar = document.getElementById(BAR_ID);
     if (!bar || input !== fphInput || form !== fphForm || bar.parentElement !== form || fphInputColumn?.nextElementSibling !== bar) renderBar();
