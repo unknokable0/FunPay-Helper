@@ -1,0 +1,21 @@
+#fph-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 0;
+}
+
+#fph-bar .fph-btn {
+  padding: 4px 10px;
+  border: 1px solid #c9c9c9;
+  border-radius: 14px;
+  background: #fff;
+  color: #333;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#fph-bar .fph-btn:hover {
+  background: #f0f0f0;
+  border-color: #999;
+}
