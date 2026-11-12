@@ -31,7 +31,7 @@
   function heading(section, title, subtitle) { return node("header", { class:"page-head" }, node("div", {class:"eyebrow"}, section), node("h1", {}, title), node("p", {class:"subtle"}, subtitle)); }
   function home() {
     const on = !!state.settings.templatesEnabled;
-    return [heading("Обзор", "Привет!", "Всё необходимое для работы с шаблонами сообщений — в одном месте."),
+    return [heading("Обзор", "Привет!", "Все инструменты для работы с сообщениями — прямо на FunPay."),
       node("section", { class:"panel summary" }, node("div", { class:"copy" }, node("h2", {}, "Шаблоны сообщений"), node("p", {class:"subtle"}, "Сохраняйте готовые ответы и вставляйте их в чат одним нажатием."), node("div", {class:"status-line"}, node("span", {class:"status-dot", style: on ? "" : "background:#92949f"}), on ? "Кнопки в чате включены" : "Кнопки в чате выключены")), button("Открыть шаблоны", () => go("templates"), "primary")),
       node("section", {class:"section"}, node("div", {class:"section-head"}, node("h2", {}, "Рабочее пространство")), node("div", {class:"panel"}, node("h2", {}, "FunPay Helper · v" + version), node("p", {class:"subtle"}, "Шаблоны хранятся локально. Сообщение вставляется в поле чата — отправка остаётся за вами.")))];
   }

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FunPay Helper",
-  "version": "0.3.0",
-  "description": "Помощник для продавцов FunPay: отдельное окно, шаблоны сообщений и проверка обновлений.",
+  "version": "0.3.1",
+  "description": "Помощник для продавцов FunPay: раздел на сайте, шаблоны сообщений и проверка обновлений.",
   "permissions": [
     "storage",
     "alarms"
@@ -32,5 +32,15 @@
   ],
   "action": {
     "default_title": "FunPay Helper"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "app.html"
+      ],
+      "matches": [
+        "https://funpay.com/*"
+      ]
+    }
+  ]
 }

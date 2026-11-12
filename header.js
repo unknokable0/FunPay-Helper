@@ -1,10 +1,51 @@
-// Кнопка в шапке FunPay открывает отдельное окно расширения.
+// Раздел FP Helper открывается внутри текущей страницы FunPay.
 (() => {
   "use strict";
   const ITEM_ID = "fph-nav-item";
   const VERSION = chrome.runtime.getManifest().version;
   let item, btn, update;
   let navObserver, navParent;
+  const VIEW_HASH = "#fph-helper";
+  const VIEW_ID = "fph-page";
+  function renderView() {
+    const active = location.hash === VIEW_HASH;
+    let frame = document.getElementById(VIEW_ID);
+    if (active && !frame) {
+      const content = document.getElementById("content-body");
+      if (!content || !content.parentNode) return false;
+      frame = document.createElement("iframe");
+      frame.id = VIEW_ID;
+      frame.title = "FunPay Helper";
+      frame.src = chrome.runtime.getURL("app.html");
+      content.parentNode.insertBefore(frame, content);
+    }
+    document.documentElement.classList.toggle("fph-view-active", active && !!frame);
+    if (frame) frame.hidden = !active;
+    if (btn) {
+      btn.classList.toggle("fph-open", active && !!frame);
+      if (active && frame) btn.setAttribute("aria-current", "page");
+      else btn.removeAttribute("aria-current");
+    }
+    if (active && frame) resizeView();
+    return !active || !!frame;
+  }
+  function resizeView() {
+    const frame = document.getElementById(VIEW_ID);
+    if (!frame || frame.hidden) return;
+    frame.style.height = Math.max(540, window.innerHeight - Math.max(0, frame.getBoundingClientRect().top)) + "px";
+  }
+  function openView() {
+    if (!document.getElementById("content-body")) {
+      alert("Не удалось открыть раздел FP Helper на этой странице. Обновите страницу и попробуйте снова.");
+      return;
+    }
+    if (location.hash !== VIEW_HASH) history.pushState(null, "", VIEW_HASH);
+    window.scrollTo(0, 0);
+    renderView();
+  }
+  window.addEventListener("popstate", renderView);
+  window.addEventListener("hashchange", renderView);
+  window.addEventListener("resize", resizeView);
   function debounce(fn, ms) { let t; return () => { clearTimeout(t); t = setTimeout(fn, ms); }; }
   function inHeader(el) { const r = el.getBoundingClientRect(); return r.height > 0 && r.top < 110; }
   function findLiteBot() {
@@ -23,7 +64,7 @@
     a.href = "#";
     a.className = ((styleLink && styleLink.className) || "") + " fph-nav-btn";
     a.setAttribute("role", "button");
-    a.setAttribute("aria-label", "Открыть окно FP Helper");
+    a.setAttribute("aria-label", "Открыть раздел FP Helper");
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     for (const [key, val] of Object.entries({ viewBox:"0 0 24 24", width:"15", height:"15", fill:"none", stroke:"currentColor", "stroke-width":"2", "stroke-linecap":"round", "stroke-linejoin":"round", "aria-hidden":"true" })) svg.setAttribute(key, val);
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -31,10 +72,7 @@
     svg.append(path); const text = document.createElement("span"); text.textContent = "FP Helper"; a.append(svg, text);
     a.addEventListener("click", e => {
       e.preventDefault(); e.stopPropagation();
-      chrome.runtime.sendMessage({ type: "open-app" }, res => {
-        const error = chrome.runtime.lastError;
-        if (error || !res || !res.ok) alert("Не удалось открыть FP Helper. Перезагрузите расширение и страницу FunPay.");
-      });
+      openView();
     });
     btn = a;
     if (styleLi) { const li = document.createElement("li"); li.className = styleLi.className.replace(/\b(active|open)\b/g, "").trim(); li.id = ITEM_ID; li.append(a); return li; }
@@ -46,6 +84,7 @@
     if (!target || !target.parentNode) return false;
     if (!item) { const styleLink = orders || (target.matches("a") ? target : target.querySelector("a")); item = buildItem(styleLink, styleLink && styleLink.closest("li")); syncBadge(); }
     if (item.nextElementSibling !== target || item.parentNode !== target.parentNode) target.parentNode.insertBefore(item, target);
+    renderView();
     return true;
   }
   function watchNav() {
