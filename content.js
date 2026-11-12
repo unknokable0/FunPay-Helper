@@ -8,9 +8,8 @@ function fphLoad() {
   return new Promise((resolve) => {
     try {
       chrome.storage.local.get(["templates", "settings"], (d) => {
-        const saved = d && d.templates;
         fphState = {
-          templates: Array.isArray(saved) && saved.length ? saved : FPH_DEFAULT_TEMPLATES,
+          templates: fphNormalizeTemplates(d && d.templates),
           settings: { ...FPH_DEFAULT_SETTINGS, ...((d && d.settings) || {}) }
         };
         resolve();
@@ -29,6 +28,28 @@ function findInput() {
   );
 }
 
+// Данные для переменных берём только из того, что реально есть на странице.
+function fphPageContext() {
+  let buyer = "";
+  const nameEl = document.querySelector(".chat-header .media-user-name a, .chat-header .media-user-name");
+  if (nameEl) {
+    const name = nameEl.textContent.trim();
+    if (name && name !== "Чат") buyer = name;
+  }
+
+  let order = "";
+  const m = location.pathname.match(/^\/orders\/([A-Z0-9]{6,12})\/?$/);
+  if (m) {
+    order = m[1];
+  } else {
+    // В чате FunPay пишет системные сообщения вида «… оплатил заказ #ABCD1234». Берём последний номер.
+    const list = document.querySelector(".chat-message-list");
+    const found = list ? list.textContent.match(/#[A-Z0-9]{8}\b/g) : null;
+    if (found) order = found[found.length - 1].slice(1);
+  }
+  return { buyer, order, hasChat: !!findInput(), url: location.href, title: document.title };
+}
+
 function insertText(input, text) {
   const start = input.selectionStart ?? input.value.length;
   const end = input.selectionEnd ?? input.value.length;
@@ -42,8 +63,9 @@ function insertText(input, text) {
 function renderBar() {
   if (!fphState) return;
   const old = document.getElementById(BAR_ID);
+  const active = fphState.templates.filter((t) => t.enabled);
 
-  if (!fphState.settings.templatesEnabled) {
+  if (!fphState.settings.templatesEnabled || !active.length) {
     if (old) old.remove();
     return;
   }
@@ -58,15 +80,15 @@ function renderBar() {
   if (bar.nextElementSibling !== form) form.parentElement.insertBefore(bar, form);
 
   bar.textContent = "";
-  for (const t of fphState.templates) {
+  for (const t of active) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "fph-btn";
     btn.textContent = t.name;
-    btn.title = t.text;
+    btn.title = (t.category ? "[" + t.category + "] " : "") + t.text;
     btn.addEventListener("click", () => {
       const current = findInput();
-      if (current) insertText(current, t.text);
+      if (current) insertText(current, fphApplyVars(t.text, fphPageContext()));
     });
     bar.appendChild(btn);
   }
@@ -89,6 +111,19 @@ new MutationObserver(() => {
 try {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && (changes.templates || changes.settings)) fphLoad().then(renderBar);
+  });
+
+  // Запросы из окна FP Helper: что открыто на странице и вставка текста в чат.
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (!msg) return;
+    if (msg.type === "fph-context") {
+      sendResponse(fphPageContext());
+    } else if (msg.type === "fph-insert") {
+      const input = findInput();
+      if (!input) return sendResponse({ ok: false });
+      insertText(input, fphApplyVars(msg.text, fphPageContext()));
+      sendResponse({ ok: true });
+    }
   });
 } catch (e) {}
 

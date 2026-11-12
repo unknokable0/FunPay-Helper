@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FunPay Helper",
-  "version": "0.2.0",
-  "description": "Помощник для продавцов FunPay: меню FP Helper, шаблоны сообщений, проверка обновлений.",
+  "version": "0.3.0",
+  "description": "Помощник для продавцов FunPay: окно FP Helper, шаблоны сообщений, лоты, статистика продаж.",
   "permissions": ["storage", "alarms"],
   "host_permissions": [
     "https://funpay.com/*",
@@ -14,7 +14,7 @@
   "content_scripts": [
     {
       "matches": ["https://funpay.com/*"],
-      "js": ["defaults.js", "content.js", "header.js"],
+      "js": ["defaults.js", "content.js", "header.js", "page.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
     }
