@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FunPay Helper</title>
+  <link rel="stylesheet" href="app.css">
+  <script src="defaults.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">F</span><span><strong>FP Helper</strong><small>Помощник продавца</small></span></div>
+      <div class="nav-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
+      <nav aria-label="Разделы">
+        <button class="nav-item" data-view="home"><span aria-hidden="true">⌂</span>Главная</button>
+        <button class="nav-item" data-view="templates"><span aria-hidden="true">▤</span>Шаблоны</button>
+        <button class="nav-item" data-view="lots"><span aria-hidden="true">▦</span>Лоты</button>
+        <button class="nav-item" data-view="actions"><span aria-hidden="true">↗</span>Быстрые действия</button>
+        <button class="nav-item" data-view="stats"><span aria-hidden="true">▥</span>Статистика</button>
+      </nav>
+      <div class="sidebar-bottom"><button class="nav-item" data-view="settings"><span aria-hidden="true">⚙</span>Настройки</button><div class="sidebar-version">FunPay Helper <span id="side-version"></span></div></div>
+    </aside>
+    <main id="main" tabindex="-1"></main>
+  </div>
+  <div id="notice" role="status" aria-live="polite"></div>
+</body>
+</html>
