@@ -29,32 +29,44 @@
   box-shadow: 0 0 0 3px rgba(255, 107, 154, 0.25);
 }
 
-/* Кнопки шаблонов над полем ввода в чате. */
+/* Быстрые ответы — без отдельного фона, в одну прокручиваемую строку. */
 #fph-bar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 6px 0;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 8px 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 #fph-bar .fph-btn {
-  padding: 4px 12px;
-  border: 1px solid rgba(128, 128, 128, 0.45);
-  border-radius: 14px;
-  background: rgba(128, 128, 128, 0.14);
+  flex: 0 0 auto;
+  max-width: min(240px, 80%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 34px;
+  padding: 6px 13px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
   color: inherit;
   font: inherit;
   font-size: 14px;
   font-weight: 600;
   line-height: 1.35;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-#fph-bar .fph-btn:hover {
-  background: rgba(192, 132, 252, 0.28);
-  border-color: rgba(192, 132, 252, 0.8);
-}
+#fph-bar .fph-btn:hover { background: rgba(128, 128, 128, 0.2); }
+#fph-bar .fph-btn:focus-visible { outline: 2px solid #b67bee; outline-offset: -3px; }
 
 /* Раздел расширения показан в той же вкладке, поверх содержимого страницы,
    но шапка и исходное содержимое остаются нетронутыми. */
