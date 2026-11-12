@@ -29,7 +29,7 @@
   async function load() {const data=await chrome.storage.local.get(['templates','settings','update']); state={templates:Array.isArray(data.templates)?data.templates:FPH_DEFAULT_TEMPLATES,settings:{...FPH_DEFAULT_SETTINGS,...(data.settings||{})},update:data.update||null};}
   function go(next) {
     if (editing && !confirm('В редакторе могут быть несохранённые изменения. Выйти?')) return;
-    editing=false; view=next; search=''; render(); main.focus();
+    editing=false; view=next; search=''; render(); main.focus({preventScroll:true});
   }
   function heading(label,title,description) {return el('header',{class:'section-header'},el('div',{class:'eyebrow'},label),el('h1',{},title),el('p',{},description));}
   function shortcut(symbol,title,desc,target) {return el('button',{type:'button',class:'shortcut',onClick:()=>go(target)},el('span',{class:'shortcut-icon'},icon(symbol)),el('span',{},el('strong',{},title),el('small',{},desc)),icon('arrow','arrow'));}
@@ -37,10 +37,10 @@
     const enabled=!!state.settings.templatesEnabled;
     return [heading('FP HELPER','Помощник продавца','Шаблоны и настройки для работы с покупателями — прямо на FunPay.'),
       el('section',{class:'surface hero'},el('div',{},el('div',{class:'hero-tag'},icon('chat'),'БЫСТРЫЕ ОТВЕТЫ'),el('h2',{},'Готовые ответы всегда под рукой'),el('p',{},'Создайте шаблон один раз, а затем вставляйте его в сообщения одним нажатием. Отправка остаётся за вами.'),button('Открыть шаблоны',()=>go('templates'),'primary','arrow')),
-        el('div',{class:'hero-stat'},el('div',{class:'stat-title'},'Шаблонов'),el('div',{class:'stat-number'},String(state.templates.length)),el('div',{class:'stat-desc'},'сохранено'),el('div',{class:'status'+(enabled?'':' off')},el('span',{class:'dot'}),enabled?'Кнопки в чате включены':'Кнопки в чате выключены'))),
+        el('div',{class:'hero-stat'},el('div',{class:'stat-title'},'Шаблонов'),el('div',{class:'stat-number'},String(state.templates.length)),el('div',{class:'stat-desc'},'сохранено'),el('div',{class:'status'+(enabled?'':' off')},el('span',{class:'dot'}),enabled?'Кнопка в чате включена':'Кнопка в чате выключена'))),
       el('section',{class:'section'},el('div',{class:'section-title'},el('h2',{},'Как пользоваться')),el('div',{class:'surface steps'},
-        el('div',{class:'step'},el('span',{class:'step-number'},'1'),el('div',{},el('strong',{},'Создайте шаблон'),el('p',{},'Укажите название кнопки и текст ответа.'))),
-        el('div',{class:'step'},el('span',{class:'step-number'},'2'),el('div',{},el('strong',{},'Откройте чат'),el('p',{},'Нажмите нужную кнопку над полем сообщения.'))),
+        el('div',{class:'step'},el('span',{class:'step-number'},'1'),el('div',{},el('strong',{},'Создайте шаблон'),el('p',{},'Укажите название и текст ответа.'))),
+        el('div',{class:'step'},el('span',{class:'step-number'},'2'),el('div',{},el('strong',{},'Откройте чат'),el('p',{},'Нажмите «Шаблоны» над полем сообщения и выберите ответ.'))),
         el('div',{class:'step'},el('span',{class:'step-number'},'3'),el('div',{},el('strong',{},'Проверьте и отправьте'),el('p',{},'При необходимости измените текст перед отправкой.'))))),
       el('section',{class:'section'},el('div',{class:'section-title'},el('h2',{},'Быстрый доступ')),el('div',{class:'shortcuts'},shortcut('chat','Шаблоны','Создать или изменить ответы','templates'),shortcut('settings','Настройки','Кнопки в чате, копия и обновления','settings'))),
       el('div',{class:'footnote'},icon('shield'),'Данные хранятся в этом браузере. Резервную копию можно создать в настройках.')];
@@ -59,7 +59,7 @@
     const query=el('input',{type:'search',class:'control',placeholder:'Поиск шаблонов',value:search,'aria-label':'Поиск шаблонов'});
     const holder=el('div',{},templateList());
     query.addEventListener('input',()=>{search=query.value; holder.replaceChildren(templateList());});
-    return [heading('СООБЩЕНИЯ','Шаблоны','Создавайте готовые ответы: название станет кнопкой над полем сообщения в чате.'),el('div',{class:'toolbar'},el('h2',{},'Ваши шаблоны · '+state.templates.length),el('div',{class:'toolbar-actions'},el('div',{class:'search'},icon('search'),query),button('Восстановить стандартные',restore),button('Создать',()=>edit(null),'primary','plus'))),holder,el('div',{class:'hint'},'Нажмите кнопку в чате, чтобы вставить текст. Сообщение вы отправляете сами.')];
+    return [heading('СООБЩЕНИЯ','Шаблоны','Создавайте готовые ответы: название поможет найти ответ в списке в чате.'),el('div',{class:'toolbar'},el('h2',{},'Ваши шаблоны · '+state.templates.length),el('div',{class:'toolbar-actions'},el('div',{class:'search'},icon('search'),query),button('Восстановить стандартные',restore),button('Создать',()=>edit(null),'primary','plus'))),holder,el('div',{class:'hint'},'Откройте «Шаблоны» в чате и выберите ответ. Сообщение вы отправляете сами.')];
   }
   async function restore() {
     if (!confirm('Заменить все текущие шаблоны стандартными? Это действие нельзя отменить.')) return;
@@ -98,9 +98,9 @@
       } catch (_) {error.textContent='Не удалось сохранить шаблон. Попробуйте снова.';}
       finally {save.disabled=false;}
     },'primary');
-    main.replaceChildren(heading('СООБЩЕНИЯ',index===null?'Новый шаблон':'Редактирование','Название будет видно на кнопке в чате.'),
+    main.replaceChildren(heading('СООБЩЕНИЯ',index===null?'Новый шаблон':'Редактирование','Название будет видно в списке шаблонов в чате.'),
       el('div',{class:'surface form'},el('label',{class:'field',for:'template-name'},'Название',name),el('label',{class:'field',for:'template-category'},'Категория · необязательно',category),el('label',{class:'field',for:'template-text'},'Текст сообщения',text),el('p',{class:'form-help'},'Сообщение не будет отправлено автоматически.'),error,el('div',{class:'form-actions'},save,button('Отмена',()=>go('templates')))));
-    name.focus();
+    name.focus({preventScroll:true});
   }
   async function toggle() {
     try {const data=await chrome.storage.local.get('settings'); const current={...FPH_DEFAULT_SETTINGS,...(data.settings||{})}; await chrome.storage.local.set({settings:{...current,templatesEnabled:!current.templatesEnabled}}); await load(); render();}
@@ -145,7 +145,7 @@
     const upload=button('Восстановить из файла',()=>file.click());
     const switcher=el('button',{type:'button',class:'switch',role:'switch','aria-label':'Быстрые ответы в чате','aria-checked':String(on),onClick:toggle});
     return [heading('ПРИЛОЖЕНИЕ','Настройки','Управляйте кнопками в чате, копией данных и обновлениями.'),
-      el('section',{class:'setting-section'},el('h2',{},'Кнопки в чате'),el('div',{class:'surface setting chat-setting'},el('div',{},el('strong',{},'Быстрые ответы'),el('p',{},'Показывать ваши шаблоны над полем сообщения в чатах FunPay.')),el('div',{class:'switch-control'},el('span',{},on?'Включено':'Выключено'),switcher))),
+      el('section',{class:'setting-section'},el('h2',{},'Кнопки в чате'),el('div',{class:'surface setting chat-setting'},el('div',{},el('strong',{},'Быстрые ответы'),el('p',{},'Показывать кнопку «Шаблоны» над полем сообщения в чатах FunPay.')),el('div',{class:'switch-control'},el('span',{},on?'Включено':'Выключено'),switcher))),
       el('section',{class:'setting-section'},el('h2',{},'Резервная копия'),el('div',{class:'surface setting backup-setting'},el('div',{},el('strong',{},'Шаблоны и настройки'),el('p',{},'Сохраните файл перед переустановкой или переходом в другой браузер. Файл может содержать личные тексты.')),el('div',{class:'update-actions'},button('Скачать копию',exportBackup),upload,file))),
       el('section',{class:'setting-section'},el('h2',{},'Обновления'),el('div',{class:'surface setting update'},el('div',{},el('strong',{},title),el('p',{},detail)),updateActions),el('p',{class:'update-note'},'Проверка автоматическая, но расширение, установленное вручную, нужно обновлять самостоятельно. Не удаляйте его при обновлении.')),
       el('section',{class:'setting-section'},el('h2',{},'О расширении'),el('div',{class:'surface setting'},el('div',{},el('strong',{},'FunPay Helper · v'+version),el('p',{},'Данные хранятся локально в этом браузере.')),el('a',{class:'btn',href:repo,target:'_blank',rel:'noopener noreferrer'},'GitHub ↗')))];

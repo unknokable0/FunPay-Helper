@@ -46,7 +46,7 @@
   function resizeView() {
     const frame = document.getElementById(VIEW_ID);
     if (!frame || frame.hidden) return;
-    frame.style.height = Math.max(540, window.innerHeight - Math.max(0, frame.getBoundingClientRect().top), Number(frame.dataset.contentHeight) || 0) + "px";
+    frame.style.height = Math.max(540, window.innerHeight - Math.max(0, frame.getBoundingClientRect().top + window.scrollY), Number(frame.dataset.contentHeight) || 0) + "px";
   }
   function openView() {
     if (!document.getElementById("content-body")) {
