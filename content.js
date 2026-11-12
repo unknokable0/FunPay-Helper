@@ -43,18 +43,20 @@ function renderBar() {
   if (!fphState) return;
   const old = document.getElementById(BAR_ID);
 
-  if (!fphState.settings.templatesEnabled) {
+  if (!fphState.settings.templatesEnabled || !fphState.templates.length) {
     if (old) old.remove();
     return;
   }
 
   const input = findInput();
-  if (!input) return;
+  if (!input) { if (old) old.remove(); return; }
   const form = input.closest("form") || input.parentElement;
   if (!form || !form.parentElement) return;
 
   const bar = old || document.createElement("div");
   bar.id = BAR_ID;
+  bar.setAttribute("role", "group");
+  bar.setAttribute("aria-label", "Шаблоны сообщений");
   if (bar.nextElementSibling !== form) form.parentElement.insertBefore(bar, form);
 
   bar.textContent = "";
@@ -63,7 +65,9 @@ function renderBar() {
     btn.type = "button";
     btn.className = "fph-btn";
     btn.textContent = t.name;
-    btn.title = t.text;
+    btn.title = t.name;
+    // Не терять позицию курсора при нажатии мышью.
+    btn.addEventListener("mousedown", (event) => event.preventDefault());
     btn.addEventListener("click", () => {
       const current = findInput();
       if (current) insertText(current, t.text);
@@ -77,9 +81,9 @@ let fphTimer = null;
 new MutationObserver(() => {
   clearTimeout(fphTimer);
   fphTimer = setTimeout(() => {
-    if (!fphState || !fphState.settings.templatesEnabled) return;
+    if (!fphState || !fphState.settings.templatesEnabled || !fphState.templates.length) return;
     const input = findInput();
-    if (!input) return;
+    if (!input) { document.getElementById(BAR_ID)?.remove(); return; }
     const form = input.closest("form") || input.parentElement;
     const bar = document.getElementById(BAR_ID);
     if (!bar || bar.nextElementSibling !== form) renderBar();

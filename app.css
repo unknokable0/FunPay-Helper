@@ -852,3 +852,8 @@ main {
     font-size: 13px;
   }
 }
+
+/* Действия проверки и скачивания обновлений. */
+.update-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-shrink: 0; }
+.update-note { margin: 10px 2px 0; color: var(--quiet); font-size: 14px; line-height: 1.5; }
+@media (max-width: 740px) { .update-actions { width: 100%; } }
