@@ -10,7 +10,7 @@ function fphLoad() {
       chrome.storage.local.get(["templates", "settings"], (d) => {
         const saved = d && d.templates;
         fphState = {
-          templates: Array.isArray(saved) && saved.length ? saved : FPH_DEFAULT_TEMPLATES,
+          templates: Array.isArray(saved) ? saved : FPH_DEFAULT_TEMPLATES,
           settings: { ...FPH_DEFAULT_SETTINGS, ...((d && d.settings) || {}) }
         };
         resolve();
