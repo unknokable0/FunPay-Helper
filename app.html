@@ -10,19 +10,25 @@
 </head>
 <body>
   <div class="shell">
-    <aside class="sidebar">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">F</span><span><strong>FP Helper</strong><small>Помощник продавца</small></span></div>
-      <div class="nav-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
-      <nav aria-label="Разделы">
-        <button class="nav-item" data-view="home"><span aria-hidden="true">⌂</span>Главная</button>
-        <button class="nav-item" data-view="templates"><span aria-hidden="true">▤</span>Шаблоны</button>
-        <button class="nav-item" data-view="lots"><span aria-hidden="true">▦</span>Лоты</button>
-        <button class="nav-item" data-view="actions"><span aria-hidden="true">↗</span>Быстрые действия</button>
-        <button class="nav-item" data-view="stats"><span aria-hidden="true">▥</span>Статистика</button>
-      </nav>
-      <div class="sidebar-bottom"><button class="nav-item" data-view="settings"><span aria-hidden="true">⚙</span>Настройки</button><div class="sidebar-version">FunPay Helper <span id="side-version"></span></div></div>
-    </aside>
-    <main id="main" tabindex="-1"></main>
+    <header class="app-heading">
+      <div class="heading-copy"><div class="brand-line"><span class="brand-mark" aria-hidden="true">F</span><span class="brand-title">FP Helper</span><span class="version" id="app-version"></span></div><p>Помощник для работы на FunPay</p></div>
+      <span class="heading-note"><span aria-hidden="true">●</span> Данные хранятся локально</span>
+    </header>
+    <div class="workspace">
+      <aside class="sidebar" aria-label="Навигация по FP Helper">
+        <div class="nav-label">МЕНЮ</div>
+        <nav aria-label="Разделы">
+          <button class="nav-item" data-view="home"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10h-6v-6H9v6H3z"/></svg>Обзор</button>
+          <button class="nav-item" data-view="templates"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4zM8 9h8M8 12h6"/></svg>Шаблоны</button>
+          <button class="nav-item" data-view="lots"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>Лоты</button>
+          <button class="nav-item" data-view="actions"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M13 3 5 13h6l-1 8 9-11h-6z"/></svg>Быстрые действия</button>
+          <button class="nav-item" data-view="stats"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 20h16M6 17v-5M12 17V5M18 17V9"/></svg>Статистика</button>
+          <span class="nav-divider" aria-hidden="true"></span>
+          <button class="nav-item" data-view="settings"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>Настройки</button>
+        </nav>
+      </aside>
+      <main id="main" tabindex="-1"></main>
+    </div>
   </div>
   <div id="notice" role="status" aria-live="polite"></div>
 </body>
