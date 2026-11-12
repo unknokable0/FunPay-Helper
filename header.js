@@ -46,7 +46,7 @@
   function resizeView() {
     const frame = document.getElementById(VIEW_ID);
     if (!frame || frame.hidden) return;
-    frame.style.height = Math.max(540, window.innerHeight - Math.max(0, frame.getBoundingClientRect().top)) + "px";
+    frame.style.height = Math.max(540, window.innerHeight - Math.max(0, frame.getBoundingClientRect().top), Number(frame.dataset.contentHeight) || 0) + "px";
   }
   function openView() {
     if (!document.getElementById("content-body")) {
@@ -57,6 +57,14 @@
     window.scrollTo(0, 0);
     renderView();
   }
+  window.addEventListener("message", e => {
+    const frame = document.getElementById(VIEW_ID);
+    const origin = chrome.runtime.getURL("").replace(/\/$/, "");
+    if (!frame || e.source !== frame.contentWindow || e.origin !== origin || e.data?.type !== "fph-size") return;
+    if (!Number.isFinite(e.data.height) || e.data.height < 0 || e.data.height > 100000) return;
+    frame.dataset.contentHeight = e.data.height;
+    resizeView();
+  });
   window.addEventListener("popstate", renderView);
   window.addEventListener("hashchange", renderView);
   window.addEventListener("resize", resizeView);
