@@ -6,7 +6,7 @@
   const repo = 'https://github.com/unknokable0/FunPay-Helper';
   document.getElementById('version').textContent = 'v' + version;
   let state = {templates:FPH_DEFAULT_TEMPLATES, settings:{...FPH_DEFAULT_SETTINGS}, update:null};
-  let view = 'home', editing = false, busy = false, search = '', toastTimer;
+  let view = 'templates', editing = false, editDirty = () => false, busy = false, search = '', toastTimer;
   const el = (tag, attrs = {}, ...children) => {
     const node = document.createElement(tag);
     for (const [k,v] of Object.entries(attrs)) {
@@ -28,23 +28,10 @@
   function notify(text) {toast.textContent=text; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toast.classList.remove('show'),3500);}
   async function load() {const data=await chrome.storage.local.get(['templates','settings','update']); state={templates:Array.isArray(data.templates)?data.templates:FPH_DEFAULT_TEMPLATES,settings:{...FPH_DEFAULT_SETTINGS,...(data.settings||{})},update:data.update||null};}
   function go(next) {
-    if (editing && !confirm('В редакторе могут быть несохранённые изменения. Выйти?')) return;
-    editing=false; view=next; search=''; render();
+    if (editing && editDirty() && !confirm('У вас есть несохранённые изменения. Выйти без сохранения?')) return;
+    editing=false; view=next; search=''; main.classList.remove('view-appear'); render(); requestAnimationFrame(()=>main.classList.add('view-appear'));
   }
   function heading(label,title,description) {return el('header',{class:'section-header'},el('div',{class:'eyebrow'},label),el('h1',{},title),el('p',{},description));}
-  function shortcut(symbol,title,desc,target) {return el('button',{type:'button',class:'shortcut',onClick:()=>go(target)},el('span',{class:'shortcut-icon'},icon(symbol)),el('span',{},el('strong',{},title),el('small',{},desc)),icon('arrow','arrow'));}
-  function home() {
-    const enabled=!!state.settings.templatesEnabled;
-    return [heading('FP HELPER','Помощник продавца','Шаблоны и настройки для работы с покупателями — прямо на FunPay.'),
-      el('section',{class:'surface hero'},el('div',{},el('div',{class:'hero-tag'},icon('chat'),'БЫСТРЫЕ ОТВЕТЫ'),el('h2',{},'Готовые ответы всегда под рукой'),el('p',{},'Создайте шаблон один раз, а затем вставляйте его в сообщения одним нажатием. Отправка остаётся за вами.'),button('Открыть шаблоны',()=>go('templates'),'primary','arrow')),
-        el('div',{class:'hero-stat'},el('div',{class:'stat-title'},'Шаблонов'),el('div',{class:'stat-number'},String(state.templates.length)),el('div',{class:'stat-desc'},'сохранено'),el('div',{class:'status'+(enabled?'':' off')},el('span',{class:'dot'}),enabled?'Кнопка в чате включена':'Кнопка в чате выключена'))),
-      el('section',{class:'section'},el('div',{class:'section-title'},el('h2',{},'Как пользоваться')),el('div',{class:'surface steps'},
-        el('div',{class:'step'},el('span',{class:'step-number'},'1'),el('div',{},el('strong',{},'Создайте шаблон'),el('p',{},'Укажите название и текст ответа.'))),
-        el('div',{class:'step'},el('span',{class:'step-number'},'2'),el('div',{},el('strong',{},'Откройте чат'),el('p',{},'Нажмите «Шаблоны» рядом с полем сообщения и выберите ответ.'))),
-        el('div',{class:'step'},el('span',{class:'step-number'},'3'),el('div',{},el('strong',{},'Проверьте и отправьте'),el('p',{},'При необходимости измените текст перед отправкой.'))))),
-      el('section',{class:'section'},el('div',{class:'section-title'},el('h2',{},'Быстрый доступ')),el('div',{class:'shortcuts'},shortcut('chat','Шаблоны','Создать или изменить ответы','templates'),shortcut('settings','Настройки','Кнопки в чате, копия и обновления','settings'))),
-      el('div',{class:'footnote'},icon('shield'),'Данные хранятся в этом браузере. Резервную копию можно создать в настройках.')];
-  }
   function templateList() {
     const list=el('div',{class:'surface list'});
     const needle=search.trim().toLocaleLowerCase('ru');
@@ -56,10 +43,13 @@
     return list;
   }
   function templates() {
-    const query=el('input',{type:'search',class:'control',placeholder:'Поиск шаблонов',value:search,'aria-label':'Поиск шаблонов'});
+    const query=el('input',{type:'search',class:'control',placeholder:'Поиск по шаблонам',value:search,'aria-label':'Поиск шаблонов'});
     const holder=el('div',{},templateList());
     query.addEventListener('input',()=>{search=query.value; holder.replaceChildren(templateList());});
-    return [heading('СООБЩЕНИЯ','Шаблоны','Создавайте готовые ответы: название поможет найти ответ в списке в чате.'),el('div',{class:'toolbar'},el('h2',{},'Ваши шаблоны · '+state.templates.length),el('div',{class:'toolbar-actions'},el('div',{class:'search'},icon('search'),query),button('Восстановить стандартные',restore),button('Создать',()=>edit(null),'primary','plus'))),holder,el('div',{class:'hint'},'Откройте «Шаблоны» в чате и выберите ответ. Сообщение вы отправляете сами.')];
+    return [heading('БЫСТРЫЕ ОТВЕТЫ','Шаблоны сообщений','Сохраняйте ответы, чтобы быстро вставлять их в переписку на FunPay.'),
+      el('div',{class:'guide'},el('span',{class:'guide-icon'},icon('chat')),el('div',{},el('strong',{},'Как это работает'),el('p',{},'Создайте шаблон, затем выберите его кнопкой «Шаблоны» рядом с полем чата. Проверьте текст и отправьте его сами.'))),
+      el('div',{class:'toolbar'},el('h2',{},'Ваши шаблоны',el('span',{class:'count-badge'},String(state.templates.length))),el('div',{class:'toolbar-actions'},el('div',{class:'search'},icon('search'),query),button('Создать шаблон',()=>edit(null),'primary','plus'))),
+      holder,el('div',{class:'list-footer'},el('span',{},'Шаблоны хранятся в этом браузере.'),button('Восстановить стандартные',restore,'subtle-action'))];
   }
   async function restore() {
     if (!confirm('Заменить все текущие шаблоны стандартными? Это действие нельзя отменить.')) return;
@@ -85,6 +75,8 @@
     const category=el('input',{class:'control',id:'template-category',maxlength:'80',value:original.category||'',autocomplete:'off'});
     const text=el('textarea',{class:'control',id:'template-text'}); text.value=original.text||'';
     const error=el('div',{class:'error',role:'alert'});
+    const initial=JSON.stringify([name.value,category.value,text.value]);
+    editDirty=()=>JSON.stringify([name.value,category.value,text.value])!==initial;
     const save=button('Сохранить',async()=>{
       const n=name.value.trim(), t=text.value.trim(), c=category.value.trim();
       if (!n||!t) {error.textContent='Укажите название и текст сообщения.'; return;}
@@ -134,30 +126,28 @@
   }
   function settings() {
     const on=!!state.settings.templatesEnabled, update=state.update, newer=update?.latest && fphCmpVersion(update.latest,version)>0;
-    let title='Проверка обновлений', detail='Проверяем каждые 6 часов и при запуске браузера.';
-    if (newer) {title='Доступна версия '+update.latest; detail=update.error?'Последняя проверка не удалась; показан предыдущий результат.':'Скачайте ZIP и замените файлы в прежней папке расширения.';}
+    let title='Проверка обновлений', detail='Проверка выполняется каждые 6 часов и при запуске браузера.';
+    if (newer) {title='Доступна версия '+update.latest; detail=update.error?'Последняя проверка не удалась; показан предыдущий результат.':'Для ручной установки скачайте архив и замените файлы в прежней папке.';}
     else if(update?.error) {title='Не удалось проверить обновления'; detail='Проверьте соединение и попробуйте снова.';}
-    else if(update?.latest) {title='Обновлений не найдено'; detail='Последняя проверка: '+new Date(update.checkedAt).toLocaleString('ru-RU');}
+    else if(update?.latest) {title='Обновлений не найдено'; const date=new Date(update.checkedAt); detail=Number.isNaN(date.getTime())?'Установлена актуальная версия.':'Последняя проверка: '+date.toLocaleString('ru-RU');}
     const checkButton=button(busy?'Проверяем…':'Проверить',check); if(busy) checkButton.disabled=true;
     const updateActions=el('div',{class:'update-actions'},checkButton,newer?el('a',{class:'btn primary',href:repo+'/archive/refs/heads/main.zip',target:'_blank',rel:'noopener noreferrer'},'Скачать ZIP'):null);
     const file=el('input',{type:'file',accept:'.json,application/json',class:'file-input','aria-label':'Выбрать резервную копию',onChange:importBackup});
     const upload=button('Восстановить из файла',()=>file.click());
     const switcher=el('button',{type:'button',class:'switch',role:'switch','aria-label':'Быстрые ответы в чате','aria-checked':String(on),onClick:toggle});
-    return [heading('ПРИЛОЖЕНИЕ','Настройки','Управляйте кнопками в чате, копией данных и обновлениями.'),
-      el('section',{class:'setting-section'},el('h2',{},'Кнопки в чате'),el('div',{class:'surface setting chat-setting'},el('div',{},el('strong',{},'Быстрые ответы'),el('p',{},'Показывать кнопку «Шаблоны» рядом с полем сообщения в чатах FunPay.')),el('div',{class:'switch-control'},el('span',{},on?'Включено':'Выключено'),switcher))),
-      el('section',{class:'setting-section'},el('h2',{},'Резервная копия'),el('div',{class:'surface setting backup-setting'},el('div',{},el('strong',{},'Шаблоны и настройки'),el('p',{},'Сохраните файл перед переустановкой или переходом в другой браузер. Файл может содержать личные тексты.')),el('div',{class:'update-actions'},button('Скачать копию',exportBackup),upload,file))),
-      el('section',{class:'setting-section'},el('h2',{},'Обновления'),el('div',{class:'surface setting update'},el('div',{},el('strong',{},title),el('p',{},detail)),updateActions),el('p',{class:'update-note'},'Проверка автоматическая, но расширение, установленное вручную, нужно обновлять самостоятельно. Не удаляйте его при обновлении.')),
-      el('section',{class:'setting-section'},el('h2',{},'О расширении'),el('div',{class:'surface setting'},el('div',{},el('strong',{},'FunPay Helper · v'+version),el('p',{},'Данные хранятся локально в этом браузере.')),el('a',{class:'btn',href:repo,target:'_blank',rel:'noopener noreferrer'},'GitHub ↗')))];
-  }
-  function planned(title, description) {
-    return [heading('В РАЗРАБОТКЕ',title,'Этот раздел пока недоступен.'),el('div',{class:'surface planned'},el('span',{class:'planned-icon'},icon('clock')),el('h2',{},'Скоро здесь появится больше'),el('p',{},description))];
+    const settingHeading=(symbol,title,description)=>el('div',{class:'setting-heading'},el('span',{class:'setting-icon'},icon(symbol)),el('div',{},el('h2',{},title),el('p',{},description)));
+    return [heading('ПРИЛОЖЕНИЕ','Настройки','Настройте работу в чате и сохраните свои данные.'),
+      el('section',{class:'surface settings-card'},settingHeading('chat','Быстрые ответы','Управление шаблонами в переписке'),el('div',{class:'setting-row'},el('div',{class:'setting-copy'},el('strong',{},'Кнопка «Шаблоны» в чате'),el('p',{},'Показывать кнопку рядом с полем сообщения. Вы сами выбираете и отправляете ответ.')),el('div',{class:'switch-control'},el('span',{},on?'Включено':'Выключено'),switcher))),
+      el('section',{class:'surface settings-card'},settingHeading('shield','Резервная копия','Перенос и сохранение данных'),el('div',{class:'setting-row backup-row'},el('div',{class:'setting-copy'},el('strong',{},'Шаблоны и настройки'),el('p',{},'Скачайте копию перед переустановкой или переходом в другой браузер. Файл может содержать личные тексты.')),el('div',{class:'settings-actions'},button('Скачать копию',exportBackup),upload,file)),el('p',{class:'settings-note'},'При восстановлении текущие шаблоны и настройки будут заменены.')),
+      el('section',{class:'surface settings-card'},settingHeading('clock','Обновления','Версия расширения и проверка'),el('div',{class:'setting-row'},el('div',{class:'setting-copy'},el('strong',{},title),el('p',{},detail)),updateActions),el('p',{class:'settings-note'},'Установленное вручную расширение необходимо обновлять самостоятельно. При обновлении не удаляйте его.')),
+      el('section',{class:'surface settings-card about-card'},el('div',{class:'setting-copy'},el('strong',{},'FunPay Helper · v'+version),el('p',{},'Шаблоны и настройки хранятся локально в этом браузере.')),el('a',{class:'btn',href:repo,target:'_blank',rel:'noopener noreferrer'},'Открыть GitHub ↗'))];
   }
   function render() {
     document.querySelectorAll('[data-view]').forEach(item=>{const active=item.dataset.view===view;item.classList.toggle('active',active); if(active)item.setAttribute('aria-current','page');else item.removeAttribute('aria-current');});
-    main.replaceChildren(...(view==='templates'?templates():view==='settings'?settings():view==='lots'?planned('Лоты','Управление лотами ещё не реализовано.'):view==='actions'?planned('Быстрые действия','Дополнительные инструменты для заказов и чатов ещё не реализованы.'):view==='stats'?planned('Статистика','Проверенных данных о продажах пока нет.'):home()));
+    main.replaceChildren(...(view==='settings'?settings():templates()));
   }
   document.querySelectorAll('[data-view]').forEach(item=>item.addEventListener('click',()=>go(item.dataset.view)));
-  chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local' && ['templates','settings','update'].some(k=>changes[k]) && !editing) load().then(()=>{if(!editing)render();}).catch(()=>notify('Не удалось прочитать данные.'));});
+  chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local' && (changes.templates || changes.settings || (changes.update && view==='settings')) && !editing) load().then(()=>{if(!editing)render();}).catch(()=>notify('Не удалось прочитать данные.'));});
   load().then(render).catch(()=>{render();notify('Не удалось прочитать данные.');});
   let sizeTimer;
   function reportSize(){clearTimeout(sizeTimer);sizeTimer=setTimeout(()=>{const h=Math.ceil(document.querySelector('.app-shell').getBoundingClientRect().height);parent.postMessage({type:'fph-size',height:h},'https://funpay.com');},40);}
