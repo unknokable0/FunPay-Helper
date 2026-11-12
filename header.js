@@ -5,6 +5,7 @@
   const VERSION = chrome.runtime.getManifest().version;
   let item, btn, update;
   let navObserver, navParent;
+  let stableFrameHeight = 0;
   const VIEW_HASH = "#fph-helper";
   const VIEW_ID = "fph-page";
   function detectTheme(content) {
@@ -30,11 +31,13 @@
       frame = document.createElement("iframe");
       frame.id = VIEW_ID;
       frame.title = "FunPay Helper";
+      frame.setAttribute("scrolling", "no");
       frame.src = chrome.runtime.getURL("app.html") + "?theme=" + detectTheme(content);
       content.appendChild(frame);
     }
     document.documentElement.classList.toggle("fph-view-active", active && !!frame);
     if (frame) frame.hidden = !active;
+    if (!active) stableFrameHeight = 0;
     if (btn) {
       btn.classList.toggle("fph-open", active && !!frame);
       if (active && frame) btn.setAttribute("aria-current", "page");
@@ -46,7 +49,15 @@
   function resizeView() {
     const frame = document.getElementById(VIEW_ID);
     if (!frame || frame.hidden) return;
-    frame.style.height = Math.max(540, window.innerHeight - Math.max(0, frame.getBoundingClientRect().top + window.scrollY), Number(frame.dataset.contentHeight) || 0) + "px";
+    const needed = Math.max(540, window.innerHeight - Math.max(0, frame.getBoundingClientRect().top + window.scrollY), Number(frame.dataset.contentHeight) || 0);
+    // Стабилизируем высоту между разделами, ограничивая лишнее пустое пространство.
+    const frameTop = Math.max(0, frame.getBoundingClientRect().top + window.scrollY);
+    const floor = Math.max(1400, window.innerHeight + 500);
+    stableFrameHeight = Math.max(Math.min(stableFrameHeight, floor), Math.min(needed, floor));
+    // Если пользователь прокрутил далеко вниз, не обрезаем видимую область.
+    const visibleBottom = Math.max(0, window.scrollY + window.innerHeight - frameTop);
+    const height = Math.max(needed, stableFrameHeight, visibleBottom) + "px";
+    if (frame.style.height !== height) frame.style.height = height;
   }
   function openView() {
     if (!document.getElementById("content-body")) {
