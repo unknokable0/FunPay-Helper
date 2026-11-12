@@ -29,12 +29,16 @@
   box-shadow: 0 0 0 3px rgba(255, 107, 154, 0.25);
 }
 
-/* Только компактная кнопка; фон чата и страницы не перекрывается. */
-#fph-bar { display: block; width: fit-content; max-width: 100%; margin: 0 0 6px; padding: 0; background: transparent !important; border: 0; box-shadow: none; }
-#fph-bar .fph-trigger { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 10px; border: 1px solid currentColor; border-radius: 8px; background: transparent; color: inherit; font: 600 14px/1.3 system-ui, sans-serif; cursor: pointer; }
-#fph-bar .fph-trigger:hover, #fph-bar .fph-trigger[aria-expanded="true"] { background: rgba(128,128,128,.2); }
+/* Встроено в существующий ряд ввода: без отдельной подложки и лишней высоты. */
+.fph-input-column { min-width: 0 !important; flex-shrink: 1; }
+#fph-bar { display: inline-flex; flex: 0 0 auto; width: auto; max-width: none; margin: 0 8px 0 0; padding: 0; background: transparent !important; border: 0 !important; box-shadow: none !important; }
+#fph-bar .fph-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; height: 36px; min-height: 36px; padding: 0 10px; border: 1px solid rgba(105,68,112,.34); border-radius: 9px; background: transparent; color: #714079; font: 600 13px/1.2 system-ui, sans-serif; white-space: nowrap; cursor: pointer; transition: background-color .15s ease, border-color .15s ease; }
+#fph-bar[data-theme="dark"] .fph-trigger { color: #ebd6ee; border-color: rgba(232,205,235,.35); }
+#fph-bar .fph-trigger:hover, #fph-bar .fph-trigger[aria-expanded="true"] { background: rgba(161,88,173,.16); border-color: #b878c3; }
 #fph-bar .fph-trigger svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-#fph-bar .fph-trigger:focus-visible, #fph-template-menu .fph-menu-item:focus-visible { outline: 2px solid #b67bee; outline-offset: -2px; }
+#fph-bar .fph-trigger:focus-visible, #fph-template-menu .fph-menu-item:focus-visible { outline: 2px solid #b67bee !important; outline-offset: 2px; }
+@media (max-width: 600px) { #fph-bar { margin-right: 6px; } #fph-bar .fph-trigger { width: 36px; padding: 0; } #fph-bar .fph-trigger span { display: none; } }
+@media (prefers-reduced-motion: reduce) { #fph-bar .fph-trigger { transition: none; } }
 #fph-template-menu { position: fixed; z-index: 2147483000; width: min(300px, calc(100vw - 16px)); box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #d8d4dc; border-radius: 10px; background: #fff; color: #29232e; box-shadow: 0 8px 24px rgba(0,0,0,.2); font: 14px/1.35 system-ui, sans-serif; }
 #fph-template-menu[data-theme="dark"] { background: #25172c; color: #f8f2fa; border-color: #604d67; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
 #fph-template-menu * { box-sizing: border-box; }
@@ -52,5 +56,6 @@
    но шапка и исходное содержимое остаются нетронутыми. */
 #fph-page { display:block; width:100%; border:0; background:transparent; }
 #fph-page[hidden] { display:none !important; }
+html.fph-view-active { overflow-y: scroll; }
 html.fph-view-active #content-body > :not(#fph-page) { display:none !important; }
 .fph-nav-btn.fph-open { color:#7f72dc !important; }
