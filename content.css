@@ -53,3 +53,11 @@
   background: rgba(192, 132, 252, 0.28);
   border-color: rgba(192, 132, 252, 0.8);
 }
+
+/* Раздел расширения показан в той же вкладке, поверх содержимого страницы,
+   но шапка и исходное содержимое остаются нетронутыми. */
+#fph-page { display:block; width:100%; border:0; background:#17181c; }
+#fph-page[hidden] { display:none !important; }
+html.fph-view-active #content-body,
+html.fph-view-active #footer { display:none !important; }
+.fph-nav-btn.fph-open { color:#7f72dc !important; }
