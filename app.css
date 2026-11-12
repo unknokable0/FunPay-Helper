@@ -778,7 +778,7 @@ main {
   *,
   *:after {
     transition: none !important;
-    transform: none !important;
+    animation: none !important;
   }
 }
 
@@ -857,3 +857,26 @@ main {
 .update-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-shrink: 0; }
 .update-note { margin: 10px 2px 0; color: var(--quiet); font-size: 14px; line-height: 1.5; }
 @media (max-width: 740px) { .update-actions { width: 100%; } }
+
+/* Понятные шаги и состояния в интерфейсе. */
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 20px; gap: 20px; }
+.step { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.step-number { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 8px; background: var(--active); color: var(--accent); font-weight: 700; }
+.step strong { display: block; font-size: 15px; }
+.step p { margin: 4px 0 0; color: var(--sub); font-size: 14px; line-height: 1.45; }
+.switch-control { display: flex; align-items: center; gap: 10px; color: var(--sub); font-size: 14px; font-weight: 600; flex-shrink: 0; }
+.file-input { display: none; }
+.backup-setting .update-actions { max-width: 310px; justify-content: flex-end; }
+.btn, .shortcut, .nav-link { transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease; }
+.switch { transition: background-color .16s ease; }
+@media (max-width: 740px) {
+  .steps { grid-template-columns: 1fr; gap: 16px; }
+  .backup-setting { flex-direction: column; align-items: flex-start; }
+  .backup-setting .update-actions { max-width: none; justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn, .shortcut, .nav-link, .switch, .switch:after { transition: none !important; }
+  .shortcut:hover { transform: none; }
+}
+
+@media (max-width: 440px) { .chat-setting { flex-direction: column; gap: 14px; } }
