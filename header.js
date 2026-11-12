@@ -7,6 +7,20 @@
   let navObserver, navParent;
   const VIEW_HASH = "#fph-helper";
   const VIEW_ID = "fph-page";
+  function detectTheme(content) {
+    // Ориентируемся на цвет основного текста и фон самой страницы,
+    // не копируя изображения или настройки темы пользователя.
+    const text = getComputedStyle(content).color.match(/\d+/g);
+    const luminance = values => 0.2126 * +values[0] + 0.7152 * +values[1] + 0.0722 * +values[2];
+    if (text && text.length >= 3 && luminance(text) > 150) return "dark";
+    const layers = [content, document.querySelector(".wrapper-content"), document.querySelector(".wrapper"), document.body, document.documentElement].filter(Boolean);
+    if (layers.some(el => getComputedStyle(el).backgroundImage !== "none")) return "dark";
+    for (const el of layers) {
+      const rgba = getComputedStyle(el).backgroundColor.match(/[\d.]+/g);
+      if (rgba && rgba.length >= 3 && (rgba.length < 4 || +rgba[3] > 0.5)) return luminance(rgba) < 130 ? "dark" : "light";
+    }
+    return "light";
+  }
   function renderView() {
     const active = location.hash === VIEW_HASH;
     let frame = document.getElementById(VIEW_ID);
@@ -16,8 +30,8 @@
       frame = document.createElement("iframe");
       frame.id = VIEW_ID;
       frame.title = "FunPay Helper";
-      frame.src = chrome.runtime.getURL("app.html");
-      content.parentNode.insertBefore(frame, content);
+      frame.src = chrome.runtime.getURL("app.html") + "?theme=" + detectTheme(content);
+      content.appendChild(frame);
     }
     document.documentElement.classList.toggle("fph-view-active", active && !!frame);
     if (frame) frame.hidden = !active;

@@ -1,11 +1,13 @@
 (() => {
   "use strict";
+  const requestedTheme = new URLSearchParams(location.search).get("theme");
+  document.documentElement.dataset.theme = requestedTheme === "light" ? "light" : "dark";
   const main = document.getElementById("main"), notice = document.getElementById("notice");
   const version = chrome.runtime.getManifest().version;
   const repo = "https://github.com/unknokable0/FunPay-Helper";
   let state = { templates: FPH_DEFAULT_TEMPLATES, settings: { ...FPH_DEFAULT_SETTINGS }, update: null };
   let view = "home", editing = false, busy = false, noticeTimer;
-  document.getElementById("side-version").textContent = "v" + version;
+  document.getElementById("app-version").textContent = "v" + version;
   function node(tag, attrs = {}, ...children) {
     const el = document.createElement(tag);
     for (const [key, value] of Object.entries(attrs)) {
@@ -31,9 +33,16 @@
   function heading(section, title, subtitle) { return node("header", { class:"page-head" }, node("div", {class:"eyebrow"}, section), node("h1", {}, title), node("p", {class:"subtle"}, subtitle)); }
   function home() {
     const on = !!state.settings.templatesEnabled;
-    return [heading("Обзор", "Привет!", "Все инструменты для работы с сообщениями — прямо на FunPay."),
-      node("section", { class:"panel summary" }, node("div", { class:"copy" }, node("h2", {}, "Шаблоны сообщений"), node("p", {class:"subtle"}, "Сохраняйте готовые ответы и вставляйте их в чат одним нажатием."), node("div", {class:"status-line"}, node("span", {class:"status-dot", style: on ? "" : "background:#92949f"}), on ? "Кнопки в чате включены" : "Кнопки в чате выключены")), button("Открыть шаблоны", () => go("templates"), "primary")),
-      node("section", {class:"section"}, node("div", {class:"section-head"}, node("h2", {}, "Рабочее пространство")), node("div", {class:"panel"}, node("h2", {}, "FunPay Helper · v" + version), node("p", {class:"subtle"}, "Шаблоны хранятся локально. Сообщение вставляется в поле чата — отправка остаётся за вами.")))];
+    const count = state.templates.length;
+    return [heading("ПАНЕЛЬ ПРОДАВЦА", "Обзор", "Быстрый доступ к настройкам и готовым ответам для ваших чатов."),
+      node("section", { class:"panel home-intro" },
+        node("div", {class:"home-intro-copy"}, node("div", {class:"panel-kicker"}, "БЫСТРЫЕ ОТВЕТЫ"), node("h2", {}, "Меньше рутины в переписках"), node("p", {class:"subtle"}, "Сохраняйте сообщения и вставляйте их в чат одним нажатием. Отправлять текст будете вы сами."), button("Открыть шаблоны", () => go("templates"), "primary")),
+        node("div", {class:"home-summary", "aria-label":"Статус шаблонов"}, node("div", {class:"summary-label"}, "ШАБЛОНЫ"), node("div", {class:"summary-number"}, String(count)), node("div", {class:"summary-caption"}, "сохранено"), node("div", {class:"summary-divider"}), node("div", {class:"status-line"}, node("span", {class:"status-dot", style:on ? "" : "background:#99939f"}), on ? "Кнопки включены" : "Кнопки выключены"))),
+      node("section", {class:"section"}, node("div", {class:"section-head"}, node("h2", {}, "Быстрый доступ")),
+        node("div", {class:"panel quick-list"},
+          node("div", {class:"quick-row"}, node("div", {class:"quick-icon", "aria-hidden":"true"}, document.querySelector('[data-view="templates"] svg').cloneNode(true)), node("div", {class:"quick-copy"}, node("strong", {}, "Шаблоны сообщений"), node("p", {class:"subtle"}, "Создание и редактирование ответов")), button("Перейти", () => go("templates"))),
+          node("div", {class:"quick-row"}, node("div", {class:"quick-icon", "aria-hidden":"true"}, document.querySelector('[data-view="settings"] svg').cloneNode(true)), node("div", {class:"quick-copy"}, node("strong", {}, "Настройки"), node("p", {class:"subtle"}, "Кнопки в чате и проверка обновлений")), button("Открыть", () => go("settings"))))),
+      node("p", {class:"privacy-note"}, "Данные шаблонов хранятся локально в этом браузере.")];
   }
   function templatesView() {
     const list = node("div", {class:"panel template-list"});
