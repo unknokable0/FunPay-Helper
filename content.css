@@ -29,44 +29,24 @@
   box-shadow: 0 0 0 3px rgba(255, 107, 154, 0.25);
 }
 
-/* Быстрые ответы — без отдельного фона, в одну прокручиваемую строку. */
-#fph-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  max-width: 100%;
-  margin: 0;
-  padding: 8px 0;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scrollbar-width: thin;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-}
-
-#fph-bar .fph-btn {
-  flex: 0 0 auto;
-  max-width: min(240px, 80%);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-height: 34px;
-  padding: 6px 13px;
-  border: 1px solid currentColor;
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.35;
-  cursor: pointer;
-}
-
-#fph-bar .fph-btn:hover { background: rgba(128, 128, 128, 0.2); }
-#fph-bar .fph-btn:focus-visible { outline: 2px solid #b67bee; outline-offset: -3px; }
+/* Только компактная кнопка; фон чата и страницы не перекрывается. */
+#fph-bar { display: block; width: fit-content; max-width: 100%; margin: 0 0 6px; padding: 0; background: transparent !important; border: 0; box-shadow: none; }
+#fph-bar .fph-trigger { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 10px; border: 1px solid currentColor; border-radius: 8px; background: transparent; color: inherit; font: 600 14px/1.3 system-ui, sans-serif; cursor: pointer; }
+#fph-bar .fph-trigger:hover, #fph-bar .fph-trigger[aria-expanded="true"] { background: rgba(128,128,128,.2); }
+#fph-bar .fph-trigger svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#fph-bar .fph-trigger:focus-visible, #fph-template-menu .fph-menu-item:focus-visible { outline: 2px solid #b67bee; outline-offset: -2px; }
+#fph-template-menu { position: fixed; z-index: 2147483000; width: min(300px, calc(100vw - 16px)); box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #d8d4dc; border-radius: 10px; background: #fff; color: #29232e; box-shadow: 0 8px 24px rgba(0,0,0,.2); font: 14px/1.35 system-ui, sans-serif; }
+#fph-template-menu[data-theme="dark"] { background: #25172c; color: #f8f2fa; border-color: #604d67; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+#fph-template-menu * { box-sizing: border-box; }
+#fph-template-menu .fph-menu-heading { flex: none; padding: 11px 12px 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+#fph-template-menu .fph-menu-heading strong { font-size: 14px; font-weight: 700; }
+#fph-template-menu .fph-menu-heading span { font-size: 12px; opacity: .72; }
+#fph-template-menu .fph-menu-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 6px 6px; }
+#fph-template-menu .fph-menu-item { width: 100%; min-height: 48px; display: block; text-align: left; padding: 8px; border: 0; border-radius: 7px; background: transparent; color: inherit; cursor: pointer; font: inherit; }
+#fph-template-menu .fph-menu-item:hover { background: rgba(128,128,128,.18); }
+#fph-template-menu .fph-menu-name, #fph-template-menu .fph-menu-preview { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#fph-template-menu .fph-menu-name { font-size: 14px; font-weight: 650; }
+#fph-template-menu .fph-menu-preview { margin-top: 2px; font-size: 12px; opacity: .75; }
 
 /* Раздел расширения показан в той же вкладке, поверх содержимого страницы,
    но шапка и исходное содержимое остаются нетронутыми. */
