@@ -1,3 +1,35 @@
+/* Кнопка FP Helper в шапке. Остальной вид берётся от соседних кнопок FunPay. */
+.fph-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.fph-nav-btn svg {
+  flex: none;
+  color: #c58bff;
+  transition: transform 0.2s ease;
+}
+
+.fph-nav-btn:hover svg,
+.fph-nav-btn.fph-open svg {
+  transform: rotate(20deg) scale(1.1);
+}
+
+.fph-nav-btn.fph-has-update::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: #ff6b9a;
+  box-shadow: 0 0 0 3px rgba(255, 107, 154, 0.25);
+}
+
+/* Кнопки шаблонов над полем ввода в чате. */
 #fph-bar {
   display: flex;
   flex-wrap: wrap;
@@ -6,16 +38,18 @@
 }
 
 #fph-bar .fph-btn {
-  padding: 4px 10px;
-  border: 1px solid #c9c9c9;
+  padding: 4px 12px;
+  border: 1px solid rgba(128, 128, 128, 0.45);
   border-radius: 14px;
-  background: #fff;
-  color: #333;
+  background: rgba(128, 128, 128, 0.14);
+  color: inherit;
+  font: inherit;
   font-size: 13px;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 #fph-bar .fph-btn:hover {
-  background: #f0f0f0;
-  border-color: #999;
+  background: rgba(192, 132, 252, 0.28);
+  border-color: rgba(192, 132, 252, 0.8);
 }

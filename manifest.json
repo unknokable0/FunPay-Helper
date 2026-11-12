@@ -1,20 +1,25 @@
 {
   "manifest_version": 3,
   "name": "FunPay Helper",
-  "version": "0.1.0",
-  "description": "Шаблоны сообщений для чатов FunPay.",
-  "permissions": ["storage"],
-  "host_permissions": ["https://funpay.com/*"],
+  "version": "0.2.0",
+  "description": "Помощник для продавцов FunPay: меню FP Helper, шаблоны сообщений, проверка обновлений.",
+  "permissions": ["storage", "alarms"],
+  "host_permissions": [
+    "https://funpay.com/*",
+    "https://raw.githubusercontent.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": ["https://funpay.com/*"],
-      "js": ["defaults.js", "content.js"],
+      "js": ["defaults.js", "content.js", "header.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
     }
   ],
   "action": {
-    "default_popup": "popup.html",
     "default_title": "FunPay Helper"
   }
 }

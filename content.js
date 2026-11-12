@@ -2,6 +2,24 @@
 // Текст только ВСТАВЛЯЕТСЯ в поле. Отправляешь ты сам кнопкой или Enter.
 
 const BAR_ID = "fph-bar";
+let fphState = null; // { templates, settings }
+
+function fphLoad() {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.local.get(["templates", "settings"], (d) => {
+        const saved = d && d.templates;
+        fphState = {
+          templates: Array.isArray(saved) && saved.length ? saved : FPH_DEFAULT_TEMPLATES,
+          settings: { ...FPH_DEFAULT_SETTINGS, ...((d && d.settings) || {}) }
+        };
+        resolve();
+      });
+    } catch (e) {
+      resolve();
+    }
+  });
+}
 
 function findInput() {
   return (
@@ -9,15 +27,6 @@ function findInput() {
     document.querySelector("textarea[name='content']") ||
     document.querySelector(".chat textarea")
   );
-}
-
-function loadTemplates() {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get("templates", (data) => {
-      const saved = data && data.templates;
-      resolve(Array.isArray(saved) && saved.length ? saved : FPH_DEFAULT_TEMPLATES);
-    });
-  });
 }
 
 function insertText(input, text) {
@@ -30,25 +39,26 @@ function insertText(input, text) {
   input.focus();
 }
 
-async function renderBar() {
+function renderBar() {
+  if (!fphState) return;
+  const old = document.getElementById(BAR_ID);
+
+  if (!fphState.settings.templatesEnabled) {
+    if (old) old.remove();
+    return;
+  }
+
   const input = findInput();
   if (!input) return;
-
   const form = input.closest("form") || input.parentElement;
   if (!form || !form.parentElement) return;
 
-  let bar = document.getElementById(BAR_ID);
-  if (!bar) {
-    bar = document.createElement("div");
-    bar.id = BAR_ID;
-    form.parentElement.insertBefore(bar, form);
-  } else if (bar.nextElementSibling !== form) {
-    form.parentElement.insertBefore(bar, form);
-  }
+  const bar = old || document.createElement("div");
+  bar.id = BAR_ID;
+  if (bar.nextElementSibling !== form) form.parentElement.insertBefore(bar, form);
 
-  const templates = await loadTemplates();
   bar.textContent = "";
-  for (const t of templates) {
+  for (const t of fphState.templates) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "fph-btn";
@@ -62,21 +72,24 @@ async function renderBar() {
   }
 }
 
-// Чат на FunPay подгружается динамически, поэтому следим за страницей.
-let timer = null;
-const observer = new MutationObserver(() => {
-  clearTimeout(timer);
-  timer = setTimeout(() => {
+// Чат на FunPay подгружается динамически, поэтому следим за страницей (с задержкой, чтобы не нагружать).
+let fphTimer = null;
+new MutationObserver(() => {
+  clearTimeout(fphTimer);
+  fphTimer = setTimeout(() => {
+    if (!fphState || !fphState.settings.templatesEnabled) return;
     const input = findInput();
+    if (!input) return;
+    const form = input.closest("form") || input.parentElement;
     const bar = document.getElementById(BAR_ID);
-    const form = input && (input.closest("form") || input.parentElement);
-    if (input && (!bar || bar.nextElementSibling !== form)) renderBar();
-  }, 300);
-});
-observer.observe(document.body, { childList: true, subtree: true });
+    if (!bar || bar.nextElementSibling !== form) renderBar();
+  }, 250);
+}).observe(document.body, { childList: true, subtree: true });
 
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.templates) renderBar();
-});
+try {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && (changes.templates || changes.settings)) fphLoad().then(renderBar);
+  });
+} catch (e) {}
 
-renderBar();
+fphLoad().then(renderBar);
