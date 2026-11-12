@@ -1,10 +1,8 @@
-// Фоновые задачи: обновления и единственное окно приложения.
+// Фоновая проверка обновлений через GitHub.
 importScripts("defaults.js");
 
 const RAW_MANIFEST = "https://raw.githubusercontent.com/unknokable0/FunPay-Helper/main/manifest.json";
 const ALARM = "fph-check-update";
-const APP_URL = chrome.runtime.getURL("app.html");
-let openingWindow = null;
 
 async function checkUpdate() {
   const local = chrome.runtime.getManifest().version;
@@ -26,33 +24,6 @@ async function checkUpdate() {
   return update;
 }
 
-async function openApp() {
-  // session сохраняет ID между перезапусками service worker, но очищается
-  // после перезапуска браузера. Дополнительное разрешение tabs не требуется.
-  const { appWindowId } = await chrome.storage.session.get("appWindowId");
-  if (typeof appWindowId === "number") {
-    try {
-      const win = await chrome.windows.get(appWindowId);
-      if (win.type === "popup") {
-        await chrome.windows.update(win.id, { focused: true, ...(win.state === "minimized" ? { state: "normal" } : {}) });
-        return;
-      }
-    } catch (_) { /* окно уже закрыто */ }
-    await chrome.storage.session.remove("appWindowId");
-  }
-  const created = await chrome.windows.create({ url: APP_URL, type: "popup", width: 940, height: 680, focused: true });
-  await chrome.storage.session.set({ appWindowId: created.id });
-}
-chrome.windows.onRemoved.addListener(async id => {
-  const { appWindowId } = await chrome.storage.session.get("appWindowId");
-  if (appWindowId === id) await chrome.storage.session.remove("appWindowId");
-});
-function requestOpen() {
-  if (!openingWindow) {
-    openingWindow = openApp().finally(() => { openingWindow = null; });
-  }
-  return openingWindow;
-}
 function schedule() {
   chrome.alarms.create(ALARM, { periodInMinutes: 360 });
   checkUpdate().catch(console.error);
@@ -66,10 +37,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     checkUpdate().then(sendResponse, e => sendResponse({ error: String(e.message || e) }));
     return true;
   }
-  if (msg.type === "open-app") {
-    requestOpen().then(() => sendResponse({ ok: true }), e => sendResponse({ ok: false, error: String(e.message || e) }));
-    return true;
-  }
+
 });
 // Действие на панели браузера сохраняет прежнее поведение.
 chrome.action.onClicked.addListener(() => chrome.tabs.create({ url: "https://funpay.com/" }));
