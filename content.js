@@ -5,6 +5,16 @@ let fphState = null;
 let fphTrigger = null;
 let fphMenu = null;
 let fphInput = null;
+let fphForm = null;
+let fphInputColumn = null;
+let fphSizeObserver = null;
+
+function stopFormWatch() { fphSizeObserver?.disconnect(); fphSizeObserver = null; }
+
+function clearInputColumn() {
+  fphInputColumn?.classList.remove('fph-input-column');
+  fphInputColumn = null;
+}
 
 function fphLoad() {
   return new Promise(resolve => {
@@ -117,18 +127,25 @@ function renderBar() {
   if (!fphState) return;
   const old = document.getElementById(BAR_ID);
   if (!fphState.settings.templatesEnabled || !fphState.templates.length) {
-    closeMenu(); if (old) old.remove(); fphTrigger = null; fphInput = null; return;
+    closeMenu(); if (old) old.remove(); fphTrigger = null; fphInput = null; fphForm = null; clearInputColumn(); stopFormWatch(); return;
   }
   const input = findInput();
-  if (!input) { closeMenu(); if (old) old.remove(); fphTrigger = null; fphInput = null; return; }
-  const form = input.closest('form') || input.parentElement;
-  if (!form || !form.parentElement) return;
+  if (!input) { closeMenu(); if (old) old.remove(); fphTrigger = null; fphInput = null; fphForm = null; clearInputColumn(); stopFormWatch(); return; }
+  const form = input.closest('form');
+  if (!form || !form.contains(input)) { closeMenu(); old?.remove(); fphTrigger = null; fphInput = null; fphForm = null; clearInputColumn(); stopFormWatch(); return; }
+  let inputColumn = input;
+  while (inputColumn.parentElement && inputColumn.parentElement !== form) inputColumn = inputColumn.parentElement;
+  if (inputColumn.parentElement !== form) return;
   closeMenu();
+  if (fphInputColumn !== inputColumn) { clearInputColumn(); fphInputColumn = inputColumn; inputColumn.classList.add('fph-input-column'); }
   const bar = old || document.createElement('div');
   bar.id = BAR_ID;
-  if (bar.nextElementSibling !== form) form.parentElement.insertBefore(bar, form);
+  if (inputColumn.nextElementSibling !== bar) form.insertBefore(bar, inputColumn.nextSibling);
+  const rgb = getComputedStyle(input).color.match(/\d+/g);
+  bar.dataset.theme = rgb && rgb.length >= 3 && (0.2126 * +rgb[0] + 0.7152 * +rgb[1] + 0.0722 * +rgb[2] > 150) ? 'dark' : 'light';
   bar.textContent = '';
   const trigger = document.createElement('button'); trigger.type = 'button'; trigger.className = 'fph-trigger';
+  trigger.setAttribute('aria-label', 'Шаблоны'); trigger.title = 'Шаблоны сообщений';
   trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('aria-controls', MENU_ID);
   const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   icon.setAttribute('viewBox', '0 0 24 24'); icon.setAttribute('aria-hidden', 'true');
@@ -142,6 +159,15 @@ function renderBar() {
     if (event.detail === 0 && fphMenu) fphMenu.querySelector('.fph-menu-item')?.focus({ preventScroll: true });
   });
   bar.appendChild(trigger); fphTrigger = trigger; fphInput = input;
+  if (fphForm !== form || !fphSizeObserver) {
+    stopFormWatch();
+    fphSizeObserver = new ResizeObserver(() => {
+      bar.classList.toggle('fph-compact', form.clientWidth < 430);
+      if (fphMenu) positionMenu();
+    });
+    fphSizeObserver.observe(form);
+  }
+  fphForm = form;
 }
 
 // FunPay меняет содержимое чата без перезагрузки страницы.
@@ -151,10 +177,10 @@ new MutationObserver(() => {
   fphTimer = setTimeout(() => {
     if (!fphState || !fphState.settings.templatesEnabled || !fphState.templates.length) return;
     const input = findInput();
-    if (!input) { closeMenu(); document.getElementById(BAR_ID)?.remove(); fphTrigger = null; fphInput = null; return; }
-    const form = input.closest('form') || input.parentElement;
+    if (!input) { closeMenu(); document.getElementById(BAR_ID)?.remove(); fphTrigger = null; fphInput = null; fphForm = null; clearInputColumn(); stopFormWatch(); return; }
+    const form = input.closest('form');
     const bar = document.getElementById(BAR_ID);
-    if (!bar || input !== fphInput || bar.nextElementSibling !== form || bar.parentElement !== form?.parentElement) renderBar();
+    if (!bar || input !== fphInput || form !== fphForm || bar.parentElement !== form || fphInputColumn?.nextElementSibling !== bar) renderBar();
   }, 250);
 }).observe(document.body, { childList: true, subtree: true });
 
