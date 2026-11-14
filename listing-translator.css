@@ -1,0 +1,162 @@
+/* Не меняем вид и ширину вкладок FunPay: выделяем только действие расширения. */
+#fph-listing-translate {
+  display: inline-flex !important;
+  flex: 0 0 auto;
+  align-items: center;
+  margin: 0 0 0 12px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  list-style: none !important;
+  vertical-align: middle;
+}
+
+#fph-listing-translate .fph-translate-button {
+  display: inline-flex;
+  min-width: 112px;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid rgba(225, 186, 233, 0.46) !important;
+  border-radius: 9px !important;
+  background: rgba(185, 113, 201, 0.2) !important;
+  color: inherit !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 2px 5px rgba(20, 8, 24, 0.14) !important;
+  font: inherit !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: translateY(var(--fph-tab-align-y, 0px));
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+#fph-listing-translate .fph-translate-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  align-items: center;
+  justify-content: center;
+}
+
+#fph-listing-translate .fph-translate-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#fph-listing-translate .fph-translate-button:hover:not(:disabled) {
+  border-color: rgba(235, 200, 241, 0.7) !important;
+  background: rgba(190, 111, 211, 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    0 4px 10px rgba(20, 8, 24, 0.2) !important;
+  transform: translateY(var(--fph-tab-align-y, 0px));
+}
+
+#fph-listing-translate .fph-translate-button:active:not(:disabled) {
+  transform: translateY(var(--fph-tab-align-y, 0px)) scale(0.98);
+}
+
+#fph-listing-translate .fph-translate-button:focus-visible {
+  outline: 2px solid #d4a2e0;
+  outline-offset: 3px;
+}
+
+#fph-listing-translate .fph-translate-button[data-state="busy"],
+#fph-listing-translate .fph-translate-button:disabled {
+  opacity: 0.68;
+  cursor: wait;
+}
+
+#fph-listing-translate .fph-translate-button[data-state="success"] {
+  border-color: rgba(104, 213, 148, 0.58) !important;
+  background: rgba(62, 151, 99, 0.22) !important;
+  color: #8fe0a9 !important;
+}
+
+#fph-listing-translate .fph-translate-button[data-state="error"] {
+  border-color: rgba(255, 155, 169, 0.58) !important;
+  background: rgba(186, 66, 91, 0.2) !important;
+  color: #ffb0bb !important;
+}
+
+#fph-listing-translate-status {
+  max-width: 68ch;
+  margin: 8px 26px 18px;
+  color: inherit;
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-wrap: anywhere;
+  opacity: 0.9;
+}
+
+#fph-listing-translate-status:not([data-state]),
+#fph-listing-translate-status[data-state=""] {
+  display: none;
+}
+
+#fph-listing-translate-status[data-state="error"] {
+  color: #ff9ba9;
+  opacity: 1;
+}
+
+#fph-listing-translate-status[data-state="success"] {
+  color: #8fe0a9;
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  #fph-listing-translate {
+    margin-left: 8px !important;
+  }
+
+  #fph-listing-translate .fph-translate-button {
+    min-width: 104px;
+    min-height: 44px;
+    padding-right: 11px;
+    padding-left: 11px;
+  }
+
+  #fph-listing-translate-status {
+    margin-right: 20px;
+    margin-left: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  #fph-listing-translate .fph-translate-button {
+    min-width: 44px;
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  #fph-listing-translate .fph-translate-icon {
+    display: none;
+  }
+
+  #fph-listing-translate-status {
+    margin-right: 14px;
+    margin-left: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #fph-listing-translate .fph-translate-button {
+    transition: none;
+  }
+}

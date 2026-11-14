@@ -30,34 +30,213 @@
 }
 
 /* Встроено в существующий ряд ввода: без отдельной подложки и лишней высоты. */
-.fph-input-column { min-width: 0 !important; flex-shrink: 1; }
-#fph-bar { display: inline-flex; flex: 0 0 auto; width: auto; max-width: none; margin: 0 8px 0 0; padding: 0; background: transparent !important; border: 0 !important; box-shadow: none !important; }
-#fph-bar .fph-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; height: 36px; min-height: 36px; padding: 0 10px; border: 1px solid rgba(105,68,112,.34); border-radius: 9px; background: transparent; color: #714079; font: 600 13px/1.2 system-ui, sans-serif; white-space: nowrap; cursor: pointer; transition: background-color .15s ease, border-color .15s ease; }
-#fph-bar[data-theme="dark"] .fph-trigger { color: #ebd6ee; border-color: rgba(232,205,235,.35); }
-#fph-bar .fph-trigger:hover, #fph-bar .fph-trigger[aria-expanded="true"] { background: rgba(161,88,173,.16); border-color: #b878c3; }
-#fph-bar .fph-trigger svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-#fph-bar .fph-trigger:focus-visible, #fph-template-menu .fph-menu-item:focus-visible { outline: 2px solid #b67bee !important; outline-offset: 2px; }
-#fph-bar.fph-compact { margin-right: 6px; }
-#fph-bar.fph-compact .fph-trigger { width: 36px; padding: 0; }
-#fph-bar.fph-compact .fph-trigger span { display: none; }
-@media (prefers-reduced-motion: reduce) { #fph-bar .fph-trigger { transition: none; } }
-#fph-template-menu { position: fixed; z-index: 2147483000; width: min(300px, calc(100vw - 16px)); box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #d8d4dc; border-radius: 10px; background: #fff; color: #29232e; box-shadow: 0 8px 24px rgba(0,0,0,.2); font: 14px/1.35 system-ui, sans-serif; }
-#fph-template-menu[data-theme="dark"] { background: #25172c; color: #f8f2fa; border-color: #604d67; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
-#fph-template-menu * { box-sizing: border-box; }
-#fph-template-menu .fph-menu-heading { flex: none; padding: 11px 12px 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-#fph-template-menu .fph-menu-heading strong { font-size: 14px; font-weight: 700; }
-#fph-template-menu .fph-menu-heading span { font-size: 12px; opacity: .72; }
-#fph-template-menu .fph-menu-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 6px 6px; }
-#fph-template-menu .fph-menu-item { width: 100%; min-height: 48px; display: block; text-align: left; padding: 8px; border: 0; border-radius: 7px; background: transparent; color: inherit; cursor: pointer; font: inherit; }
-#fph-template-menu .fph-menu-item:hover { background: rgba(128,128,128,.18); }
-#fph-template-menu .fph-menu-name, #fph-template-menu .fph-menu-preview { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#fph-template-menu .fph-menu-name { font-size: 14px; font-weight: 650; }
-#fph-template-menu .fph-menu-preview { margin-top: 2px; font-size: 12px; opacity: .75; }
+.fph-input-column {
+  min-width: 0 !important;
+  flex-shrink: 1;
+}
+#fph-bar {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  margin: 0 8px 0 0;
+  padding: 0;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+#fph-bar .fph-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(105, 68, 112, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.52);
+  color: #63386e;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    0 2px 5px rgba(40, 20, 45, 0.08);
+  font:
+    650 14px/1.2 system-ui,
+    sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+#fph-bar[data-theme="dark"] .fph-trigger {
+  color: #f5e8f8;
+  border-color: rgba(232, 205, 235, 0.3);
+  background: rgba(28, 18, 34, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 2px 7px rgba(0, 0, 0, 0.12);
+}
+#fph-bar .fph-trigger:hover,
+#fph-bar .fph-trigger[aria-expanded="true"] {
+  border-color: #b878c3;
+  background: linear-gradient(
+    135deg,
+    rgba(173, 100, 192, 0.24),
+    rgba(112, 63, 132, 0.18)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 5px 12px rgba(54, 24, 63, 0.16);
+  transform: translateY(-1px);
+}
+#fph-bar .fph-trigger:active {
+  transform: translateY(0) scale(0.98);
+}
+#fph-bar .fph-trigger svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#fph-bar .fph-trigger:focus-visible,
+#fph-template-menu .fph-menu-item:focus-visible {
+  outline: 2px solid #b67bee !important;
+  outline-offset: 2px;
+}
+#fph-bar.fph-compact {
+  margin-right: 6px;
+}
+#fph-bar.fph-compact .fph-trigger {
+  width: 44px;
+  padding: 0;
+}
+#fph-bar.fph-compact .fph-trigger span {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  #fph-bar .fph-trigger {
+    transition: none;
+  }
+}
+#fph-template-menu {
+  position: fixed;
+  z-index: 2147483000;
+  width: min(320px, calc(100vw - 16px));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(87, 62, 94, 0.2);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.97);
+  color: #29232e;
+  box-shadow:
+    0 14px 36px rgba(20, 10, 26, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  font:
+    14px/1.4 system-ui,
+    sans-serif;
+}
+#fph-template-menu[data-theme="dark"] {
+  background: rgba(34, 22, 40, 0.97);
+  color: #f8f2fa;
+  border-color: rgba(232, 205, 235, 0.2);
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+#fph-template-menu * {
+  box-sizing: border-box;
+}
+#fph-template-menu .fph-menu-heading {
+  flex: none;
+  padding: 12px 14px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(128, 100, 138, 0.14);
+}
+#fph-template-menu .fph-menu-heading strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+#fph-template-menu .fph-menu-heading span {
+  font-size: 12px;
+  opacity: 0.72;
+}
+#fph-template-menu .fph-menu-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+}
+#fph-template-menu .fph-menu-item {
+  width: 100%;
+  min-height: 50px;
+  display: block;
+  text-align: left;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+#fph-template-menu .fph-menu-item:hover {
+  border-color: rgba(142, 89, 157, 0.16);
+  background: rgba(128, 100, 138, 0.12);
+}
+#fph-template-menu .fph-menu-name,
+#fph-template-menu .fph-menu-preview {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#fph-template-menu .fph-menu-name {
+  font-size: 14px;
+  font-weight: 650;
+}
+#fph-template-menu .fph-menu-preview {
+  margin-top: 2px;
+  font-size: 12px;
+  opacity: 0.75;
+}
 
 /* Раздел расширения показан в той же вкладке, поверх содержимого страницы,
    но шапка и исходное содержимое остаются нетронутыми. */
-#fph-page { display:block; width:100%; border:0; background:transparent; }
-#fph-page[hidden] { display:none !important; }
-html.fph-view-active { overflow-y: scroll; }
-html.fph-view-active #content-body > :not(#fph-page) { display:none !important; }
-.fph-nav-btn.fph-open { color:#7f72dc !important; }
+#fph-page {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  pointer-events: auto !important;
+}
+#fph-page[hidden] {
+  display: none !important;
+  pointer-events: none !important;
+}
+html.fph-view-active {
+  overflow-y: scroll;
+}
+html.fph-view-active #content-body > :not(#fph-page) {
+  display: none !important;
+}
+.fph-nav-btn.fph-open {
+  color: #7f72dc !important;
+}
