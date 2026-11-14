@@ -1,0 +1,72 @@
+/* Собственные объявления заметны, но не перекрывают данные и действия FunPay. */
+.fph-own-lot {
+  position: relative;
+  background-color: rgba(204, 144, 255, 0.22) !important;
+  box-shadow:
+    inset 4px 0 0 #ce8cff,
+    inset 0 0 0 1px rgba(220, 172, 255, 0.34);
+}
+
+.fph-own-lot > td {
+  background-color: rgba(204, 144, 255, 0.22) !important;
+  border-top: 1px solid rgba(220, 172, 255, 0.34);
+  border-bottom: 1px solid rgba(220, 172, 255, 0.34);
+}
+
+.fph-own-lot > td:first-child {
+  box-shadow: inset 4px 0 0 #ce8cff;
+}
+
+.fph-own-lot-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+  min-height: 16px;
+  margin-inline-start: 6px;
+  padding: 1px 7px;
+  border: 1px solid rgba(183, 119, 228, 0.55);
+  border-radius: 999px;
+  background: rgba(237, 218, 252, 0.96);
+  color: #582675;
+  font: 750 9px/1 system-ui, sans-serif;
+  letter-spacing: 0.015em;
+  white-space: nowrap;
+  text-decoration: none !important;
+  user-select: none;
+  pointer-events: none;
+}
+
+.fph-own-lot-name {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .fph-own-lot {
+    background-color: rgba(193, 124, 255, 0.2) !important;
+    box-shadow:
+      inset 4px 0 0 #d49aff,
+      inset 0 0 0 1px rgba(220, 172, 255, 0.3);
+  }
+
+  .fph-own-lot > td {
+    background-color: rgba(193, 124, 255, 0.2) !important;
+    border-color: rgba(220, 172, 255, 0.3);
+  }
+
+  .fph-own-lot > td:first-child {
+    box-shadow: inset 4px 0 0 #d49aff;
+  }
+
+  .fph-own-lot-badge {
+    border-color: rgba(204, 151, 239, 0.5);
+    background: rgba(74, 43, 91, 0.94);
+    color: #f4e5ff;
+  }
+}
