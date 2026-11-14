@@ -1,0 +1,8 @@
+# Local and editor files
+.DS_Store
+Thumbs.db
+*.log
+
+# Personal exports and local backups
+*backup*.json
+*резервн*.json
