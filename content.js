@@ -9,6 +9,64 @@ let fphForm = null;
 let fphInputColumn = null;
 let fphSizeObserver = null;
 
+// Finance history is fetched from the logged-in FunPay tab so its session
+// cookies are handled as same-origin requests instead of extension-origin fetches.
+chrome.runtime.onMessage.addListener((message, sender, respond) => {
+  if (
+    sender.id !== chrome.runtime.id ||
+    message?.type !== "fph-funpay-page-fetch"
+  )
+    return;
+  if (location.origin !== "https://funpay.com") {
+    respond({ ok: false, error: "Откройте авторизованную страницу FunPay." });
+    return;
+  }
+  const path = String(message.path || "");
+  const url = new URL(path, `${location.origin}/`);
+  if (
+    url.origin !== location.origin ||
+    url.protocol !== "https:" ||
+    url.port ||
+    path.startsWith("//")
+  ) {
+    respond({ ok: false, error: "Некорректный адрес запроса FunPay." });
+    return;
+  }
+  const method = message.method === "POST" ? "POST" : "GET";
+  const body = method === "POST" ? String(message.body || "") : undefined;
+  if (body && body.length > 20000) {
+    respond({ ok: false, error: "Слишком большой запрос FunPay." });
+    return;
+  }
+  fetch(url.href, {
+    method,
+    headers:
+      method === "POST"
+        ? { "Content-Type": "application/x-www-form-urlencoded" }
+        : undefined,
+    body,
+    credentials: "include",
+    cache: "no-store",
+    redirect: "follow",
+    signal: AbortSignal.timeout(20000),
+  }).then(
+    async (response) => {
+      respond({
+        ok: true,
+        status: response.status,
+        url: response.url,
+        text: await response.text(),
+      });
+    },
+    (error) =>
+      respond({
+        ok: false,
+        error: String(error?.message || "Не удалось связаться с FunPay."),
+      }),
+  );
+  return true;
+});
+
 function stopFormWatch() {
   fphSizeObserver?.disconnect();
   fphSizeObserver = null;
@@ -299,6 +357,10 @@ function containsChatInput(node) {
   return node.matches(selector) || !!node.querySelector(selector);
 }
 
+function containsNode(node, target) {
+  return !!target && (node === target || !!node?.contains?.(target));
+}
+
 function relevantChatMutation(record) {
   const target =
     record.target?.nodeType === Node.ELEMENT_NODE
@@ -306,18 +368,47 @@ function relevantChatMutation(record) {
       : record.target?.parentElement;
   if (target?.closest?.(`#${BAR_ID}, #${MENU_ID}`)) return false;
 
-  const changedNodes = [...record.addedNodes, ...record.removedNodes];
-  if (changedNodes.length && changedNodes.every(isFphOwnedNode)) return false;
+  const added = record.addedNodes;
+  const removed = record.removedNodes;
+  const changedCount = added.length + removed.length;
+  if (changedCount) {
+    let onlyFphNodes = true;
+    for (const node of added) {
+      if (!isFphOwnedNode(node)) {
+        onlyFphNodes = false;
+        break;
+      }
+    }
+    if (onlyFphNodes) {
+      for (const node of removed) {
+        if (!isFphOwnedNode(node)) {
+          onlyFphNodes = false;
+          break;
+        }
+      }
+    }
+    if (onlyFphNodes) return false;
+  }
   if (target === fphChatRoot) return true;
 
   const hasLiveInput = fphInput?.isConnected && fphForm?.isConnected;
-  if (!hasLiveInput) return changedNodes.some(containsChatInput);
+  if (hasLiveInput) {
+    if (target === fphForm || fphForm.contains(target)) return true;
+    // A form can be moved or replaced by FunPay's dynamic navigation.
+    for (const node of added)
+      if (containsNode(node, fphForm)) return true;
+    for (const node of removed)
+      if (containsNode(node, fphForm)) return true;
+    // Chat history changes do not need a subtree search while the composer
+    // we already manage is still connected.
+    return false;
+  }
 
-  return (
-    target === fphForm ||
-    fphForm.contains(target) ||
-    changedNodes.some(containsChatInput)
-  );
+  for (const node of added)
+    if (containsChatInput(node)) return true;
+  for (const node of removed)
+    if (containsChatInput(node)) return true;
+  return false;
 }
 
 const fphDomObserver = new MutationObserver((records) => {
