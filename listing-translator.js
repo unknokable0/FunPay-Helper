@@ -4,6 +4,7 @@
 
   const TOOLBAR_ID = "fph-listing-translate";
   const STATUS_ID = "fph-listing-translate-status";
+  const STYLE_BUTTON_CLASS = "fph-style-button";
   const RU_LABELS = new Set(["по-русски", "русский", "русский язык"]);
   const EN_LABELS = new Set([
     "по-английски",
@@ -277,6 +278,66 @@
     }
   }
 
+  function setStyleStatus(text, kind = "") {
+    if (!activeStatus) return;
+    clearTimeout(statusTimer);
+    statusTimer = 0;
+    activeStatus.textContent = text;
+    activeStatus.dataset.state = kind;
+    if (text && (kind === "success" || kind === "error")) {
+      statusTimer = setTimeout(() => {
+        if (
+          activeStatus?.textContent !== text ||
+          activeStatus.dataset.state !== kind
+        )
+          return;
+        activeStatus.textContent = "";
+        activeStatus.dataset.state = "";
+        statusTimer = 0;
+      }, 5000);
+    }
+  }
+
+  function styleCopiedDescription(ruTab, enTab) {
+    const form = ruTab.closest("form") || enTab.closest("form");
+    const root = form || panelSearchRoot(ruTab, enTab);
+    const fields = [
+      ...root.querySelectorAll("textarea"),
+    ].filter(
+      (field) =>
+        !field.disabled &&
+        !field.readOnly &&
+        !field.closest(`#${TOOLBAR_ID}`),
+    );
+    if (!fields.length) {
+      setStyleStatus(
+        "Не нашёл текстовые поля описания. Откройте форму клонированного лота.",
+        "error",
+      );
+      return;
+    }
+
+    let changed = 0;
+    for (const field of fields) {
+      const before = field.value || "";
+      const after = globalThis.FPH_LISTING_STYLE?.apply(before);
+      if (typeof after === "string" && after !== before) {
+        setFieldValue(field, after);
+        changed += 1;
+      }
+    }
+    if (!changed) {
+      setStyleStatus(
+        "Подходящих эмодзи не нашёл — текст оставлен без изменений.",
+      );
+      return;
+    }
+    setStyleStatus(
+      `Готово: обновлены эмодзи в полях (${changed}). Текст не менялся — проверьте черновик перед публикацией.`,
+      "success",
+    );
+  }
+
   async function translate(button, label, ruTab, enTab) {
     const pairs = fieldPairs(ruTab, enTab);
     if (!pairs) {
@@ -405,10 +466,6 @@
   }
 
   function render() {
-    if (!translationEnabled) {
-      clearControls();
-      return;
-    }
     const ruTab = findTab("ru");
     const enTab = findTab("en");
     const bar = ruTab && enTab ? tabBar(ruTab, enTab) : null;
@@ -417,7 +474,12 @@
       return;
     }
     const existing = document.getElementById(TOOLBAR_ID);
-    if (existing && currentBar === bar && document.getElementById(STATUS_ID)) {
+    if (
+      existing &&
+      currentBar === bar &&
+      document.getElementById(STATUS_ID) &&
+      existing.dataset.translationEnabled === String(translationEnabled)
+    ) {
       return;
     }
     clearControls();
@@ -427,20 +489,6 @@
     );
     toolbar.id = TOOLBAR_ID;
     toolbar.className = "fph-translate-control-item";
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "fph-translate-button";
-    button.setAttribute("aria-label", "Перевести заполненные поля на английский");
-    button.title =
-      "Переводит заполненные поля по-русски и переносит результат во вкладку по-английски";
-    const icon = document.createElement("span");
-    icon.className = "fph-translate-icon";
-    icon.setAttribute("aria-hidden", "true");
-    icon.innerHTML =
-      '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 6h10M9 4v2m2 0c-.7 3.5-3 6.4-6.5 8.2M6 9c.8 1.8 2.2 3.4 4.1 4.5M14 20l4-10 4 10m-6.2-3h4.4"/></svg>';
-    const label = document.createElement("span");
-    label.className = "fph-translate-label";
-    label.textContent = "Перевести";
     const status = document.createElement("span");
     status.id = STATUS_ID;
     status.className = "fph-translate-status";
@@ -448,14 +496,60 @@
     status.setAttribute("aria-live", "polite");
     activeStatus = status;
     currentBar = bar;
-    button.append(icon, label);
-    button.addEventListener("click", () =>
-      translate(button, label, ruTab, enTab),
+    toolbar.dataset.translationEnabled = String(translationEnabled);
+
+    if (translationEnabled) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "fph-translate-button";
+      button.setAttribute(
+        "aria-label",
+        "Перевести заполненные поля на английский",
+      );
+      button.title =
+        "Переводит заполненные поля по-русски и переносит результат во вкладку по-английски";
+      const icon = document.createElement("span");
+      icon.className = "fph-translate-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.innerHTML =
+        '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 6h10M9 4v2m2 0c-.7 3.5-3 6.4-6.5 8.2M6 9c.8 1.8 2.2 3.4 4.1 4.5M14 20l4-10 4 10m-6.2-3h4.4"/></svg>';
+      const label = document.createElement("span");
+      label.className = "fph-translate-label";
+      label.textContent = "Перевести";
+      button.append(icon, label);
+      button.addEventListener("click", () =>
+        translate(button, label, ruTab, enTab),
+      );
+      toolbar.append(button);
+    }
+
+    const styleButton = document.createElement("button");
+    styleButton.type = "button";
+    styleButton.className = `fph-translate-button ${STYLE_BUTTON_CLASS}`;
+    styleButton.setAttribute(
+      "aria-label",
+      "Заменить декоративные эмодзи на розово-фиолетовые",
     );
-    toolbar.append(button);
+    styleButton.title =
+      "Меняет только декоративные эмодзи в текстовых описаниях; слова не меняются";
+    const styleIcon = document.createElement("span");
+    styleIcon.className = "fph-style-icon";
+    styleIcon.setAttribute("aria-hidden", "true");
+    styleIcon.textContent = "💜";
+    const styleLabel = document.createElement("span");
+    styleLabel.className = "fph-translate-label";
+    styleLabel.textContent = "Мой стиль";
+    styleButton.append(styleIcon, styleLabel);
+    styleButton.addEventListener("click", () =>
+      styleCopiedDescription(ruTab, enTab),
+    );
+    toolbar.append(styleButton);
     bar.append(toolbar);
     bar.insertAdjacentElement("afterend", status);
-    requestAnimationFrame(() => alignTranslateButton(button, ruTab, enTab));
+    requestAnimationFrame(() => {
+      const actionButton = toolbar.querySelector(".fph-translate-button");
+      if (actionButton) alignTranslateButton(actionButton, ruTab, enTab);
+    });
   }
 
   function scheduleRender() {
@@ -480,9 +574,9 @@
       EN_LABELS.has(normalizedText(candidate));
     if (node.matches(TAB_CANDIDATE_SELECTOR) && matchesLanguage(node))
       return true;
-    return [...node.querySelectorAll(TAB_CANDIDATE_SELECTOR)].some(
-      matchesLanguage,
-    );
+    for (const candidate of node.querySelectorAll(TAB_CANDIDATE_SELECTOR))
+      if (matchesLanguage(candidate)) return true;
+    return false;
   }
 
   function relevantMutation(record) {
@@ -492,10 +586,15 @@
         : record.target?.parentElement;
     if (target?.closest?.(`#${TOOLBAR_ID}, #${STATUS_ID}`)) return false;
 
+    // The translator is only useful on FunPay's offer editor. Avoid walking
+    // unrelated page mutations (chat, catalog, orders) on every site route.
+    if (currentBar && !currentBar.isConnected) return true;
+    if (!currentBar && !/^\/lots\/offer(?:\/|$)/.test(location.pathname))
+      return false;
+
     const changedNodes = [...record.addedNodes, ...record.removedNodes];
     if (changedNodes.length && changedNodes.every(isOwnedNode)) return false;
 
-    if (currentBar && !currentBar.isConnected) return true;
     const form = currentBar?.closest("form");
     if (
       currentBar &&

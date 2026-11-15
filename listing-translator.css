@@ -40,6 +40,33 @@
     opacity 0.15s ease;
 }
 
+#fph-listing-translate .fph-style-button {
+  min-width: 112px;
+  border-color: rgba(224, 157, 233, 0.62) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(196, 122, 220, 0.28),
+    rgba(244, 139, 187, 0.24)
+  ) !important;
+}
+
+#fph-listing-translate .fph-style-button:hover:not(:disabled) {
+  border-color: rgba(242, 184, 248, 0.85) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(196, 122, 220, 0.42),
+    rgba(244, 139, 187, 0.38)
+  ) !important;
+}
+
+#fph-listing-translate .fph-style-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+}
+
 #fph-listing-translate .fph-translate-icon {
   display: inline-flex;
   width: 16px;

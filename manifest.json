@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FunPay Helper",
-  "version": "0.9.31",
-  "description": "Шаблоны, перевод, подсветка своих лотов, номера заказов и напоминания для FunPay.",
+  "version": "0.9.47",
+  "description": "Инструменты для работы с FunPay: учёт операций, шаблоны ответов и перевод лотов.",
   "permissions": [
     "storage",
     "alarms",
@@ -26,6 +26,7 @@
         "defaults.js",
         "content.js",
         "header.js",
+        "listing-style-core.js",
         "listing-translator.js",
         "own-lots.js"
       ],
