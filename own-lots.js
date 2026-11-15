@@ -4,7 +4,7 @@
 
   const OWN_CLASS = "fph-own-lot";
   const BADGE_CLASS = "fph-own-lot-badge";
-  const DEFAULT_USERNAME = "WWILI";
+  const DEFAULT_USERNAME = "";
   const ROW_SELECTOR = [
     "[role='row']",
     "tr",
@@ -69,8 +69,8 @@
     }
   }
 
-  function isSellerName(node, exactOnly = false) {
-    const userKey = linkedUserKey(node);
+  function isSellerName(node, exactOnly = false, userKey = undefined) {
+    if (userKey === undefined) userKey = linkedUserKey(node);
     if (ownUserId && userKey === ownUserId) return true;
 
     const expected = normalize(ownUsername);
@@ -82,7 +82,7 @@
     if (displayed === expected || normalize(userKey) === expected) return true;
     if (exactOnly) return false;
 
-    // Разрешаем рейтинг/ID после ника, но не похожие ники вроде WWILI2.
+    // Разрешаем рейтинг или ID после ника, но не совпадения по началу строки.
     return (
       displayed.startsWith(expected) &&
       /^[\s★⭐☆#·•|]/u.test(displayed.slice(expected.length))
@@ -184,8 +184,15 @@
 
   function scanRoot(root) {
     if (!root || (root !== document && !root.isConnected)) return;
-    const candidates = queryWithin(root, IDENTITY_SELECTOR);
     const expected = normalize(ownUsername);
+    // With the default (blank) nickname, only the authenticated seller's
+    // profile links can be relevant. This avoids scanning every user link and
+    // username on large catalog/order pages.
+    const candidateSelector =
+      ownUserId && !expected
+        ? `a[href*="/users/${ownUserId}"]`
+        : IDENTITY_SELECTOR;
+    const candidates = queryWithin(root, candidateSelector);
     if (expected) {
       const rows = queryWithin(root, ROW_SELECTOR);
       if (root.nodeType === Node.ELEMENT_NODE && root.matches(ROW_SELECTOR))
@@ -225,7 +232,14 @@
     for (const nameNode of candidates) {
       const className = String(nameNode.className || "");
       const identityClass = /user|seller|username/i.test(className);
-      if (!isSellerName(nameNode, !linkedUserKey(nameNode) && !identityClass))
+      const userKey = linkedUserKey(nameNode);
+      if (
+        !isSellerName(
+          nameNode,
+          !userKey && !identityClass,
+          userKey,
+        )
+      )
         continue;
       const row = listingRow(nameNode);
       if (!row) continue;
