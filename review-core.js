@@ -52,6 +52,15 @@
     };
     return true;
   }
+  function reminderCooldownActive(remindedAt, now, cooldownMs) {
+    return (
+      Number.isFinite(remindedAt) &&
+      Number.isFinite(now) &&
+      Number.isFinite(cooldownMs) &&
+      cooldownMs > 0 &&
+      now < remindedAt + cooldownMs
+    );
+  }
   function reviewPresent(review) {
     if (review === null) return false;
     if (!review || typeof review !== "object" || Array.isArray(review))
@@ -117,6 +126,7 @@
   const api = {
     confirmation,
     record,
+    reminderCooldownActive,
     reviewPresent,
     buyerLeftReview,
     decision,

@@ -6,12 +6,13 @@ const REVIEW_ALARM = "fph-review-scan";
 const REVIEW_DEFAULT = {
   enabled: false,
   delayMinutes: 40,
-  text: "Спасибо за покупку! Если у вас будет минутка, пожалуйста, оставьте отзыв о заказе. Буду очень благодарен!",
+  text: "Благодарю за покупку. Если у вас будет возможность, оставьте, пожалуйста, отзыв о заказе.",
 };
 const REVIEW_MIN_DELAY = 2,
   REVIEW_MAX_DELAY = 120;
 const REVIEW_LOOKBACK_MS = 24 * 60 * 60 * 1000,
   REVIEW_DAILY_SCAN_MS = 24 * 60 * 60 * 1000;
+const REVIEW_BUYER_REMINDER_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const REVIEW_BACKFILL_VERSION = 3,
   REVIEW_CHECK_BATCH_SIZE = 12;
 const REVIEW_CONFIRMATION_GRACE_MS = 10 * 60 * 1000,
@@ -40,13 +41,14 @@ async function parser() {
   await creatingParser;
   parserUsed = true;
 }
-async function parse(kind, html, partial = false) {
+async function parse(kind, html, partial = false, requestedState = null) {
   await parser();
   const result = await chrome.runtime.sendMessage({
     target: "fph-review-parser",
     kind,
     html,
     partial,
+    requestedState,
   });
   if (!result?.ok)
     throw Error(result?.error || "Не удалось обработать данные FunPay");
@@ -63,26 +65,71 @@ async function parseSystems(messages) {
     throw Error(result?.error || "Не удалось прочитать системные сообщения.");
   return result.messages;
 }
-async function fpFetch(path, options = {}) {
-  const res = await fetch("https://funpay.com/" + path, {
-    credentials: "include",
-    cache: "no-store",
-    redirect: "follow",
-    ...options,
-    signal: AbortSignal.timeout(20000),
-  });
+async function fpFetch(path, options = {}, pageTabId = null) {
+  let res;
+  if (Number.isInteger(pageTabId)) {
+    let pageResult = null;
+    try {
+      pageResult = await chrome.tabs.sendMessage(pageTabId, {
+        type: "fph-funpay-page-fetch",
+        path,
+        method: options.method === "POST" ? "POST" : "GET",
+        body: options.method === "POST" ? String(options.body || "") : "",
+      });
+    } catch (_) {
+      // If the FunPay content script is unavailable, retain the original
+      // extension fetch as a fallback and report its actual response below.
+    }
+    if (pageResult) {
+      if (!pageResult.ok)
+        throw Error(pageResult.error || "Не удалось связаться со страницей FunPay.");
+      res = {
+        ok: pageResult.status >= 200 && pageResult.status < 300,
+        status: pageResult.status,
+        url: pageResult.url,
+        text: async () => pageResult.text,
+        json: async () => JSON.parse(pageResult.text),
+      };
+    }
+  }
+  if (!res)
+    res = await fetch("https://funpay.com/" + path, {
+      credentials: "include",
+      cache: "no-store",
+      redirect: "follow",
+      ...options,
+      signal: AbortSignal.timeout(20000),
+    });
   const finalUrl = new URL(res.url);
   if (
-    !res.ok ||
     finalUrl.protocol !== "https:" ||
     finalUrl.hostname !== "funpay.com" ||
-    finalUrl.port ||
-    /\/account\/login/.test(finalUrl.pathname)
+    finalUrl.port
   )
-    throw Error("Нет доступа к FunPay. Проверьте вход и соединение.");
+    throw Error("FunPay перенаправил запрос на неожиданный адрес.");
+  if (/\/account\/login/.test(finalUrl.pathname))
+    throw Error("Сессия FunPay не найдена. Войдите в аккаунт и повторите синхронизацию.");
+  if (!res.ok)
+    throw Error(`FunPay вернул ошибку HTTP ${res.status}. Повторите позже.`);
   return res;
 }
-async function salesPage(state, next = null) {
+async function activeFunPayTabId(sender) {
+  if (Number.isInteger(sender?.tab?.id)) return sender.tab.id;
+  try {
+    const tabs = await chrome.tabs.query({
+      active: true,
+      lastFocusedWindow: true,
+    });
+    for (const tab of tabs) {
+      try {
+        if (new URL(tab.url || "").origin === "https://funpay.com")
+          return tab.id;
+      } catch (_) {}
+    }
+  } catch (_) {}
+  return null;
+}
+async function salesPage(state, next = null, pageTabId = null) {
   const opts = next
     ? {
         method: "POST",
@@ -90,8 +137,93 @@ async function salesPage(state, next = null) {
         body: new URLSearchParams({ continue: next }),
       }
     : {};
-  const res = await fpFetch("orders/trade?state=" + state, opts);
-  return parse("sales", await res.text(), !!next);
+  const res = await fpFetch(
+    "orders/trade?state=" + state,
+    opts,
+    pageTabId,
+  );
+  return parse("sales", await res.text(), !!next, state);
+}
+async function purchasesListPath(pageTabId = null) {
+  const res = await fpFetch("", {}, pageTabId);
+  const result = await parse("purchases-link", await res.text());
+  const url = new URL(result.path, "https://funpay.com/");
+  if (
+    url.protocol !== "https:" ||
+    url.hostname !== "funpay.com" ||
+    url.port ||
+    !url.pathname.startsWith("/orders")
+  )
+    throw Error("Ссылка на покупки FunPay выглядит небезопасно.");
+  return url.pathname.replace(/^\/+/, "") + url.search;
+}
+async function purchasesPage(path, next = null, pageTabId = null) {
+  const opts = next
+    ? {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ continue: next }),
+      }
+    : {};
+  const res = await fpFetch(path, opts, pageTabId);
+  return parse("purchases", await res.text(), !!next);
+}
+async function allPurchases({
+  maxPages = 50,
+  since = Date.now() - 365 * 24 * 60 * 60 * 1000,
+  pageTabId = null,
+} = {}) {
+  const path = await purchasesListPath(pageTabId);
+  let page = await purchasesPage(path, null, pageTabId),
+    userId = page.userId || null,
+    items = [],
+    visited = new Set(),
+    seen = new Set(),
+    dateUnknown = 0;
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex++) {
+    if (userId && page.userId && userId !== page.userId)
+      throw Error("Аккаунт FunPay изменился во время загрузки покупок.");
+    userId = page.userId || userId;
+    const unique = page.items.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+    dateUnknown += unique.filter((item) => !Number.isFinite(item.createdAt)).length;
+    items.push(
+      ...unique.filter(
+        (item) => !Number.isFinite(item.createdAt) || item.createdAt >= since,
+      ),
+    );
+    if (!page.next)
+      return {
+        userId,
+        items,
+        dateUnknown,
+        complete: true,
+        pages: pageIndex + 1,
+      };
+    if (visited.has(page.next))
+      throw Error("Не удалось прочитать все страницы покупок.");
+    visited.add(page.next);
+    if (
+      unique.length &&
+      unique.every(
+        (item) => Number.isFinite(item.createdAt) && item.createdAt < since,
+      )
+    )
+      return {
+        userId,
+        items,
+        dateUnknown,
+        complete: true,
+        pages: pageIndex + 1,
+      };
+    if (pageIndex + 1 >= maxPages)
+      throw Error("Слишком много страниц покупок для безопасной загрузки.");
+    page = await purchasesPage(path, page.next, pageTabId);
+  }
+  throw Error("Слишком много страниц покупок для безопасной загрузки.");
 }
 async function allSales(
   state,
@@ -99,9 +231,10 @@ async function allSales(
     firstPage = null,
     maxPages = 50,
     since = Date.now() - REVIEW_LOOKBACK_MS,
+    pageTabId = null,
   } = {},
 ) {
-  let page = firstPage || (await salesPage(state)),
+  let page = firstPage || (await salesPage(state, null, pageTabId)),
     userId = null,
     csrf = null,
     items = [],
@@ -116,7 +249,7 @@ async function allSales(
     dateUnknown += matching.filter((x) => !Number.isFinite(x.createdAt)).length;
     items.push(
       ...matching.filter(
-        (x) => Number.isFinite(x.createdAt) && x.createdAt >= since,
+        (x) => !Number.isFinite(x.createdAt) || x.createdAt >= since,
       ),
     );
     if (!page.next)
@@ -155,12 +288,12 @@ async function allSales(
         pages: pageIndex + 1,
       };
     }
-    page = await salesPage(state, page.next);
+    page = await salesPage(state, page.next, pageTabId);
   }
   throw Error("Слишком много страниц продаж для безопасной проверки.");
 }
-async function allPaidSales(maxPages = 50) {
-  let page = await salesPage("paid");
+async function allPaidSales(maxPages = 50, pageTabId = null) {
+  let page = await salesPage("paid", null, pageTabId);
   const userId = page.userId || null;
   const items = [];
   const seen = new Set();
@@ -188,7 +321,7 @@ async function allPaidSales(maxPages = 50) {
       throw Error(
         "Слишком много страниц заказов. Список не скопирован полностью.",
       );
-    page = await salesPage("paid", page.next);
+    page = await salesPage("paid", page.next, pageTabId);
   }
   throw Error("Список заказов не удалось загрузить полностью.");
 }
@@ -349,7 +482,32 @@ async function processReview() {
   s.seen ||= {};
   s.entries ||= {};
   s.reviewedBuyers ||= {};
+  s.remindedBuyers ||= {};
   let changed = false;
+  // Backfill recent reminder attempts from per-order records so an upgrade
+  // cannot send another message to a buyer whose earlier send was already tried.
+  for (const entry of Object.values(s.entries)) {
+    if (
+      !["sending", "sent", "uncertain"].includes(entry.state) ||
+      !/^\d+$/.test(String(entry.buyerId || "")) ||
+      !Number.isFinite(entry.attemptedAt)
+    )
+      continue;
+    const previousAttempt = Number(s.remindedBuyers[entry.buyerId]) || 0;
+    if (entry.attemptedAt > previousAttempt) {
+      s.remindedBuyers[entry.buyerId] = entry.attemptedAt;
+      changed = true;
+    }
+  }
+  for (const [buyerId, remindedAt] of Object.entries(s.remindedBuyers)) {
+    if (
+      !Number.isFinite(remindedAt) ||
+      now >= remindedAt + REVIEW_BUYER_REMINDER_COOLDOWN_MS
+    ) {
+      delete s.remindedBuyers[buyerId];
+      changed = true;
+    }
+  }
   if (s.backfillVersion !== REVIEW_BACKFILL_VERSION) {
     s.backfillVersion = REVIEW_BACKFILL_VERSION;
     changed = true;
@@ -444,6 +602,20 @@ async function processReview() {
       if (reviewState === null) {
         entry.nextCheckAt = Date.now() + REVIEW_CHECK_RETRY_MS;
         entry.lastReason = "Не удалось однозначно прочитать данные отзыва.";
+        await saveReview(store);
+        continue;
+      }
+      if (
+        buyerId &&
+        FPHReviewCore.reminderCooldownActive(
+          s.remindedBuyers[buyerId],
+          Date.now(),
+          REVIEW_BUYER_REMINDER_COOLDOWN_MS,
+        )
+      ) {
+        entry.state = "cancelled";
+        entry.lastReason =
+          "Покупателю уже отправляли напоминание в течение последних 24 часов.";
         await saveReview(store);
         continue;
       }
@@ -601,6 +773,19 @@ async function processReview() {
       await saveReview(store);
       continue;
     }
+    if (
+      FPHReviewCore.reminderCooldownActive(
+        s.remindedBuyers[buyerId],
+        Date.now(),
+        REVIEW_BUYER_REMINDER_COOLDOWN_MS,
+      )
+    ) {
+      entry.state = "cancelled";
+      entry.lastReason =
+        "Покупателю уже отправляли напоминание в течение последних 24 часов.";
+      await saveReview(store);
+      continue;
+    }
     cfg = await reviewConfig();
     if (
       !cfg.enabled ||
@@ -687,6 +872,21 @@ async function processReview() {
       continue;
     }
     cfg = lastConfig;
+    const attemptedAt = Date.now();
+    entry.attemptedAt = attemptedAt;
+    s.remindedBuyers[buyerId] = attemptedAt;
+    for (const other of Object.values(s.entries)) {
+      if (
+        other !== entry &&
+        other.buyerId === buyerId &&
+        other.state === "pending"
+      ) {
+        other.state = "cancelled";
+        other.lastReason =
+          "Напоминание по другому заказу этому покупателю уже отправлено.";
+      }
+    }
+    await saveReview(store);
     sentThisRun = true;
     try {
       const result = await runner(session.csrf, [], {
@@ -864,12 +1064,93 @@ chrome.runtime.onMessage.addListener((m, s, reply) => {
     (async () => {
       const parserWasOpen = await chrome.offscreen.hasDocument();
       try {
-        const result = await allPaidSales();
+        const result = await allPaidSales(50, await activeFunPayTabId(s));
         reply({ ok: true, ...result });
       } catch (error) {
         reply({
           ok: false,
           error: String(error?.message || "Не удалось загрузить заказы."),
+        });
+      } finally {
+        if (parserUsed && !parserWasOpen && !reviewRun) {
+          parserUsed = false;
+          try {
+            await chrome.offscreen.closeDocument();
+          } catch (_) {}
+        }
+      }
+    })();
+    return true;
+  }
+  if (s.id === chrome.runtime.id && m?.type === "fph-get-finance-history") {
+    let senderOrigin = "";
+    try {
+      senderOrigin = new URL(s.url || "").origin;
+    } catch (_) {}
+    const extensionOrigin = new URL(chrome.runtime.getURL("/")).origin;
+    if (senderOrigin !== extensionOrigin) {
+      reply({ ok: false, error: "Загрузка доступна только в окне FP Helper." });
+      return;
+    }
+    (async () => {
+      const parserWasOpen = await chrome.offscreen.hasDocument();
+      try {
+        const pageTabId = await activeFunPayTabId(s);
+        const sales = [];
+        const userIds = new Set();
+        let dateUnknown = 0;
+        const since = Date.now() - 365 * 24 * 60 * 60 * 1000;
+        for (const state of ["closed", "refunded", "paid"]) {
+          const result = await allSales(state, {
+            maxPages: 50,
+            since,
+            pageTabId,
+          });
+          if (!result.complete)
+            throw Error("Не удалось загрузить историю полностью.");
+          if (result.userId) userIds.add(result.userId);
+          dateUnknown += result.dateUnknown || 0;
+          sales.push(...result.items);
+        }
+        const purchasesResult = await allPurchases({
+          maxPages: 50,
+          since,
+          pageTabId,
+        });
+        if (!purchasesResult.complete)
+          throw Error("Не удалось загрузить историю покупок полностью.");
+        if (purchasesResult.userId) userIds.add(purchasesResult.userId);
+        dateUnknown += purchasesResult.dateUnknown || 0;
+        if (userIds.size > 1)
+          throw Error("Аккаунт FunPay изменился во время загрузки.");
+        if (sales.length > 3000)
+          throw Error("Слишком много заказов для одной загрузки.");
+        if (purchasesResult.items.length > 3000)
+          throw Error("Слишком много покупок для одной загрузки.");
+        reply({
+          ok: true,
+          sales: sales.map((sale) => ({
+            id: sale.id,
+            state: sale.state,
+            createdAt: sale.createdAt,
+            dateText: sale.dateText,
+            title: sale.title,
+            price: sale.price,
+          })),
+          purchases: purchasesResult.items.map((purchase) => ({
+            id: purchase.id,
+            state: purchase.state,
+            createdAt: purchase.createdAt,
+            dateText: purchase.dateText,
+            title: purchase.title,
+            price: purchase.price,
+          })),
+          dateUnknown,
+        });
+      } catch (error) {
+        reply({
+          ok: false,
+          error: String(error?.message || "Не удалось загрузить продажи."),
         });
       } finally {
         if (parserUsed && !parserWasOpen && !reviewRun) {
